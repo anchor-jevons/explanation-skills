@@ -1,0 +1,85 @@
+<!doctype html>
+<html lang="zh-CN"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>v3 示例：容量与截止期</title>
+<style>
+:root{color-scheme:light dark;--bg:#f5f3ed;--fg:#172c38;--card:#fff;--line:#b8c6c8;--accent:#126967;--muted:#4a6270}*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--fg);font:17px/1.65 system-ui,sans-serif}main{max-width:920px;margin:auto;padding:42px 24px 64px}h1{font-size:clamp(28px,5vw,44px);line-height:1.2;margin:12px 0 20px}h2{font-size:23px}p{max-width:72ch}.eyebrow{color:var(--accent);font-weight:700;letter-spacing:.06em}.subtle{color:var(--muted)}section{margin:26px 0;border-top:1px solid var(--line);padding-top:10px}.controls{display:grid;grid-template-columns:1fr 1fr;gap:22px}label{display:block;font-weight:600}input,textarea,button{font:inherit}input[type=number]{width:100%;padding:10px;border:1px solid var(--line);border-radius:6px;background:var(--card);color:var(--fg)}input[type=range]{width:100%;accent-color:var(--accent)}output{font-weight:750}.result{border-left:4px solid var(--accent);padding:12px 18px;background:var(--card);margin:18px 0}.bar{height:18px;border-radius:4px;background:var(--accent);min-width:2px}.bar.demand{background:#ba632d}.barrow{margin:12px 0}.barrow p{margin:3px 0}.note{font-size:15px}.metrics{display:grid;grid-template-columns:repeat(3,1fr);gap:18px}.metrics strong{display:block;font-size:24px}textarea{width:100%;min-height:95px;margin:8px 0 16px;padding:10px;background:var(--card);color:var(--fg);border:1px solid var(--line);border-radius:6px}button{padding:10px 18px;border:0;border-radius:6px;background:var(--accent);color:#fff;cursor:pointer}summary{cursor:pointer;font-weight:650}:focus-visible{outline:3px solid #d07d26;outline-offset:3px}[data-feedback-output]{min-height:200px;font:13px/1.4 monospace;white-space:pre-wrap;overflow-wrap:anywhere}.error{color:#b13925}@media(prefers-color-scheme:dark){:root{--bg:#132129;--fg:#e4eeef;--card:#1b303b;--line:#46616a;--accent:#3c9e98;--muted:#b6c8cf}}@media(max-width:520px){main{padding:26px 18px}.controls,.metrics{grid-template-columns:1fr;gap:12px}.metrics strong{font-size:21px}}@media print{body{background:white;color:black}main{padding:0}input,button,form{display:none}.result{border:1px solid #777}details>*{display:block}}
+</style></head><body><main>
+<div class="eyebrow">EXPLAIN FOR UNDERSTANDING · V3</div><h1>容量够了，为什么还不能保证截止期？</h1>
+<p>先改变频率和工作量，观察窗口容量的边界。这个实验只检查一个窗口的总量；任务何时到达、能否抢占，仍需另外分析。</p>
+<p class="subtle note">教学示意模型，非原项目测量数据。窗口固定为 100 µs；固定开销为 6,000 cycles，每层工作量为 6,000 cycles。每个时钟周期按一个计算周期计。</p>
+<section><h2>1 · 改变条件</h2><div class="controls"><div><label for="frequency">频率：<output id="frequency-label">416</output> MHz</label><input id="frequency" type="range" min="100" max="600" step="1" value="416"></div><div><label for="layers">层数 N（1–20 的整数）</label><input id="layers" type="number" min="1" max="20" step="1" value="5"></div></div>
+<p id="result" class="result" role="status"></p><div class="metrics"><div>容量<strong id="capacity"></strong></div><div>需求<strong id="demand"></strong></div><div>容量余量<strong id="margin"></strong></div></div>
+<div class="barrow"><p>容量</p><div class="bar" id="capacity-bar"></div></div><div class="barrow"><p>需求</p><div class="bar demand" id="demand-bar"></div></div>
+<p id="formula" class="note"></p><p><strong>没有检查：</strong>任务释放时刻、单个任务截止期、抢占规则、存储器停顿。正余量不表示这些条件已满足。</p></section>
+<section><h2>2 · 检查自己的推理</h2><p>如果总工作量不变，但所有任务都推迟到窗口末尾才释放，这里的容量结果会变吗？截止期结果可能改变吗？</p><details><summary>想好后查看解释</summary><p>容量计算仍相同，因为公式没有使用释放时刻。实际可执行时间却可能缩短，因此截止期结果可能改变。需要包含释放时刻的任务模型才能继续判断。</p></details></section>
+<section><h2>3 · 把疑问带回对话</h2><form data-explain-feedback data-title="容量与截止期" data-scenario="100 µs 窗口容量模型"><label for="prediction">你的预测（可留空）</label><textarea id="prediction" name="prediction"></textarea><label for="reasoning">你依据的原因或疑问（可留空）</label><textarea id="reasoning" name="reasoning"></textarea><button type="button" data-copy-feedback>复制反馈</button><p class="note">复制内容包含当前参数和结果；请自行粘贴回对话。</p><textarea data-feedback-output aria-label="可手动复制的反馈" readonly hidden></textarea><p data-feedback-status role="status" aria-live="polite"></p></form></section>
+</main><script>
+function capacityModel(frequency, layers) {
+ if(!Number.isFinite(frequency)||frequency<100||frequency>600||!Number.isInteger(frequency)) throw new Error('频率必须是 100–600 MHz 的整数。');
+ if(!Number.isInteger(layers)||layers<1||layers>20) throw new Error('层数必须是 1–20 的整数。');
+ const capacity=frequency*100, demand=(layers+1)*6000;
+ return {capacity,demand,margin:capacity-demand,capacityPass:demand<=capacity};
+}
+const frequency=document.querySelector('#frequency'), layers=document.querySelector('#layers'), form=document.querySelector('form');
+function update() {
+ document.querySelector('#frequency-label').textContent=frequency.value;
+ try {
+  const model=capacityModel(frequency.valueAsNumber,layers.valueAsNumber);
+  for(const key of ['capacity','demand','margin']) document.querySelector('#'+key).textContent=model[key].toLocaleString('en-US')+' cycles';
+  document.querySelector('#result').textContent=model.capacityPass?'窗口容量检查通过；可调度性尚未建立。':'窗口容量检查失败；该模型下工作量无法装入窗口。';
+  document.querySelector('#result').classList.remove('error');
+  const scale=Math.max(model.capacity,model.demand);
+  document.querySelector('#capacity-bar').style.width=(100*model.capacity/scale)+'%';
+  document.querySelector('#demand-bar').style.width=(100*model.demand/scale)+'%';
+  document.querySelector('#formula').textContent='容量 = '+frequency.value+' MHz × 100 µs；需求 = ('+layers.value+' + 1) × 6,000 cycles。';
+  form.explanationSnapshot={frequencyMHz:frequency.valueAsNumber,layers:layers.valueAsNumber,windowUs:100,...model,scope:'仅聚合窗口容量；不证明可调度性'};
+ } catch(error) {
+  document.querySelector('#result').textContent=error.message;
+  document.querySelector('#result').classList.add('error');
+  for(const key of ['capacity','demand','margin']) document.querySelector('#'+key).textContent='—';
+  document.querySelector('#capacity-bar').style.width='0';document.querySelector('#demand-bar').style.width='0';
+  document.querySelector('#formula').textContent='输入无效，暂不计算。';
+  form.explanationSnapshot={frequencyInput:frequency.value,layersInput:layers.value,error:error.message};
+ }
+}
+frequency.addEventListener('input',update);layers.addEventListener('input',update);update();
+</script><script>// Inline this component in a self-contained explanation page.
+(() => {
+  for (const form of document.querySelectorAll('form[data-explain-feedback]')) {
+    const button = form.querySelector('[data-copy-feedback]');
+    const output = form.querySelector('[data-feedback-output]');
+    const status = form.querySelector('[data-feedback-status]');
+    if (!button || !output || !status) continue;
+    const chinese = document.documentElement.lang.toLowerCase().startsWith('zh');
+    const unanswered = chinese ? '未回答' : 'Unanswered';
+    form.addEventListener('submit', event => event.preventDefault());
+    button.addEventListener('click', async () => {
+      const answers = {};
+      for (const name of ['prediction', 'reasoning', 'comment']) {
+        if (!form.querySelector(`[name="${name}"]`)) continue;
+        const value = new FormData(form).get(name);
+        answers[name] = typeof value === 'string' && value.trim() ? value.trim() : unanswered;
+      }
+      const payload = {
+        type: 'explanation-feedback',
+        page: form.dataset.title || document.title,
+        scenario: form.dataset.scenario || '',
+        snapshot: form.explanationSnapshot || {},
+        answers,
+      };
+      const text = JSON.stringify(payload, null, 2);
+      // Always retain selectable text even when clipboard APIs are unavailable.
+      output.value = text;
+      output.hidden = false;
+      try {
+        if (!navigator.clipboard?.writeText) throw new Error('Clipboard unavailable');
+        await navigator.clipboard.writeText(text);
+        status.textContent = chinese ? '已复制；请粘贴回对话。' : 'Copied; paste this back into the conversation.';
+      } catch {
+        output.focus();
+        output.select();
+        status.textContent = chinese ? '请手动复制下方文本，再粘贴回对话。' : 'Copy the selected text below and paste it back into the conversation.';
+      }
+    });
+  }
+})();
+</script></body></html>

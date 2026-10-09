@@ -1,0 +1,20 @@
+{
+  "repository": "https://github.com/QingYunA/answer-me-with-html",
+  "commit": "19b2b5b07676d3e65c83ca9a7b6621f300b54c92",
+  "retrieved": "2026-10-09",
+  "license": "MIT",
+  "upstreamPaths": {
+    "am.mjs": "skills/answer-me-with-html/scripts/am.mjs",
+    "LICENSE": "LICENSE"
+  },
+  "files": {
+    "am.mjs": {
+      "sha256": "751888304373642db95bcbe356c1c64153f76883e170cab4a56953119e12ec6a",
+      "bytes": 550162
+    },
+    "LICENSE": {
+      "sha256": "752a1a34b40ae8e64e86f546ec699a691aff573179e1f96997e82757b2ee5d3f",
+      "bytes": 1089
+    }
+  }
+}
