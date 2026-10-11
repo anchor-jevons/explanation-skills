@@ -11,7 +11,7 @@ description: >-
   Not for plain lookups or arithmetic, translation, copy-editing, bug fixing, defect-hunting
   code review, or non-explanatory HTML such as landing pages.
 metadata:
-  version: "3.2"
+  version: "3.3"
 ---
 
 # Explain for Understanding
@@ -133,6 +133,13 @@ Respect the user's requested format. Otherwise choose using this table:
 | Interactive model | Changing a parameter or scenario teaches a consequential relationship | A few labeled static cases teach it equally well |
 | Video | The user requests video and sequencing benefits from narration | It delays access to an answer that text or a static diagram can deliver |
 
+A chat answer to a why/how question is usually read once, right away. Unless the user
+asks for depth, aim for about 300–400 Chinese characters (roughly 150–250 English
+words) and at most one diagram or one table. Each extra element competes with the
+mechanism for attention. If the answer needs much more, either the question is bigger
+than it looks (consider a page) or the extra detail is optional (offer it in one line
+instead of including it).
+
 Distinguish three useful interaction types:
 
 1. **Navigation:** reveal evidence, jump to a source, expand a derivation.
@@ -153,6 +160,8 @@ is unavailable; do not silently substitute a static page and call it a video.
 **Check correctness:** verify decision-relevant arithmetic, units, boundary cases,
 labels, and source links. Test custom model code against independently calculated
 cases, including invalid inputs. Keep claims within the actual checks performed.
+Run every command and code example the reply shows, or mark it as unverified. Side
+examples get less scrutiny than the main claim, yet readers copy them directly.
 
 **Check presentation:** for generated pages, inspect a desktop and a narrow layout.
 Verify diagrams, controls, and feedback actions. Describe only what the page shows: a
@@ -164,8 +173,10 @@ checks are unavailable, describe the missing check rather than claiming it passe
 **Check understanding proportionally:**
 
 - A factual lookup is complete with an accurate, scoped answer. Do not append a quiz.
-- For explanation-only requests, a short prediction question with an optional revealed
-  answer can help, but need not block delivery.
+- For explanation-only requests answered in chat, stop when the question is answered.
+  An unrequested quiz lengthens the reply and turns an answer into homework. If a
+  prediction shows the mechanism well, state it with its answer as part of the
+  explanation. A reusable page may include an optional, collapsed self-check.
 - For explicit learning or a demonstrated misconception, ask one meaningful prediction,
   teach-back, or transfer question. Use an unseen variation that requires the mechanism,
   not recall of a number. Explain errors and adjust only the relevant part.
@@ -195,6 +206,10 @@ comment do not authorize unrelated actions.
 
 ## Completion report
 
-Lead with the answer or decision rule. Link any requested artifact and mention material
-unverified assumptions or checks. For a page with open decisions, name those decisions
-briefly. For a short answer, end when the reader's task is satisfied.
+Lead with the answer or decision rule. When delivering a file or page, the first
+sentence is the conclusion itself and the link comes in the second: the reader may
+never open the file, so the message must carry the main point on its own. Lead-ins
+such as "先说结论：" or "Here's the summary" announce an answer instead of giving it.
+Mention material unverified assumptions or checks. For a page with open decisions,
+name those decisions briefly. For a short answer, end when the reader's task is
+satisfied.

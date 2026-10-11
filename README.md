@@ -4,7 +4,7 @@
 
 ## 当前版本
 
-- [explain-for-understanding v3.2](explain-for-understanding/SKILL.md)：以直接、直白的文字为基础，按读者任务选择短答、图文或交互模型；区分证据强度，并支持反馈与理解检查。
+- [explain-for-understanding v3.3](explain-for-understanding/SKILL.md)：以直接、直白的文字为基础，按读者任务选择短答、图文或交互模型；区分证据强度，并支持反馈与理解检查。
 - [answer-me-with-html 原版](answer-me-with-html/SKILL.md)：此前从 QingYunA 官方仓库保存的参考文件，保持原样。
 - [原始 v2](archive/explain-for-understanding-v2-SKILL.md)：用户提供的原文件，逐字节保留。
 
@@ -35,7 +35,7 @@ node explain-for-understanding/scripts/render.mjs render outputs/v3-window-expla
 
 ## 来源与授权
 
-`explain-for-understanding` 从一次技术解释对比中发展而来：v2 是该次讨论生成、由使用者提供的原始文件；v3/v3.1/v3.2 是本项目对解释方法、渲染与反馈流程的迭代。它不是 QingYunA 的原版 skill，也不是 Karpathy 发布或认可的规范。
+`explain-for-understanding` 从一次技术解释对比中发展而来：v2 是该次讨论生成、由使用者提供的原始文件；v3/v3.1/v3.2/v3.3 是本项目对解释方法、渲染与反馈流程的迭代。它不是 QingYunA 的原版 skill，也不是 Karpathy 发布或认可的规范。
 
 本项目新增的 skill、脚本、文档和示例采用 [MIT License](LICENSE)。QingYunA 的参考 skill、固定渲染器以及示例中包含的上游页面代码保留上游 MIT 授权，具体来源见 [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md)。
 
