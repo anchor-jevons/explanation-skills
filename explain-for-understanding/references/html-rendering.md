@@ -66,7 +66,20 @@ Run `help <component>` only for components in use. For real code, prefer `src=` 
 ### Diagnostics and verification
 
 Read rendering diagnostics. Fix reported content or syntax errors and rerun; avoid
-more than two blind retries. Writing warnings are evidence to inspect, not a reason to
+more than two blind retries. `render.mjs` adds checks the pinned renderer lacks: it stops
+on a draft without `##` panels or a `src=` file that resolves outside the workspace
+(including through a symbolic link), and it warns about malformed tables, math, and
+active markup. The draft must be a file; stdin (`-`) is not accepted.
+
+Known renderer limits (tested 2026-10-10 against the pinned commit):
+
+- Math is not typeset. `$...$` appears literally and Markdown drops a backslash before
+  punctuation (`\,` becomes `,`). Write formulas as code spans or with Unicode symbols.
+- `html` and `svg` fences are embedded as-is, and their scripts and event handlers run
+  when the page opens. Never put quoted, fetched, or user-supplied markup in them; show
+  such markup as a code block.
+- A table whose delimiter row does not match its header renders as plain text with
+  pipes. Check every table in the rendered page. Writing warnings are evidence to inspect, not a reason to
 damage terminology or omit necessary qualifiers. Re-check changed claims after edits.
 
 Inspect the rendered page in desktop and phone-width views. Check labels, clipped
