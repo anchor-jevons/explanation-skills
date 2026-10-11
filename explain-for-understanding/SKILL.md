@@ -1,13 +1,17 @@
 ---
 name: explain-for-understanding
 description: >-
-  Explain complex mechanisms, compare choices, or help a reader understand and review
-  technical work in direct, plain language. Build a sourced causal model, choose a short answer, diagram, or
-  interactive experiment to suit the reader's task, and check transfer of understanding
-  when learning is the goal. Use for explanations, intuition, explanatory HTML, or
-  understanding-oriented reviews; ordinary factual lookups can stay brief.
+  Explains how or why something works, compares options for a decision, or helps a reader
+  understand a technical change, lecture, or design, in plain language backed by a sourced
+  causal model. Picks the lightest sufficient form: short answer, diagram, static HTML
+  explainer, or interactive model, and checks transfer when the reader wants to learn.
+  Use when the user asks why/how something works, wants intuition, says they do not get it
+  (为什么, 讲讲原理, 没看懂, 帮我理解), asks to compare or choose with tradeoffs, wants an
+  explanatory page or diagram, or wants to understand (not just fix) code, an error, or a PR.
+  Not for plain lookups or arithmetic, translation, copy-editing, bug fixing, defect-hunting
+  code review, or non-explanatory HTML such as landing pages.
 metadata:
-  version: "3.1"
+  version: "3.2"
 ---
 
 # Explain for Understanding
@@ -151,7 +155,9 @@ labels, and source links. Test custom model code against independently calculate
 cases, including invalid inputs. Keep claims within the actual checks performed.
 
 **Check presentation:** for generated pages, inspect a desktop and a narrow layout.
-Verify diagrams, controls, and feedback actions. Keep wide figures locally scrollable
+Verify diagrams, controls, and feedback actions. Describe only what the page shows: a
+color, position, or shape taken from a source slide ("the purple box") must match the
+rendered diagram or be removed. Keep wide figures locally scrollable
 with readable labels; keep the page itself within the viewport. If visual or behavioral
 checks are unavailable, describe the missing check rather than claiming it passed.
 
