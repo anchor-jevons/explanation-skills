@@ -1,6 +1,6 @@
 #!/usr/bin/env node
-import { existsSync, mkdirSync, realpathSync } from 'node:fs';
-import { dirname, resolve } from 'node:path';
+import { existsSync, mkdirSync, readFileSync, realpathSync, statSync } from 'node:fs';
+import { dirname, resolve, sep } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { spawnSync } from 'node:child_process';
 
@@ -24,9 +24,12 @@ let vendorArgs;
 if (command === 'render') {
   if (rest.length < 2 || rest.length > 3 || (rest[2] && rest[2] !== '--replace')) fail(usage);
   const [draftArg, outputArg] = rest;
+  if (draftArg === '-') fail('Reading the draft from stdin is not supported: save it as a .md file first; that file is the editable source.');
   const draft = resolve(draftArg);
   const output = resolve(outputArg);
   if (!existsSync(draft)) fail(`Draft not found: ${draft}`);
+  if (!statSync(draft).isFile()) fail(`Draft is not a file: ${draft}`);
+  preflight(readFileSync(draft, 'utf8'));
   if (!output.toLowerCase().endsWith('.html')) fail('The output must use the .html extension.');
   if (existsSync(output) && realpathSync(output) === realpathSync(draft)) fail('Output would overwrite the source draft.');
   if (existsSync(output) && rest[2] !== '--replace') fail(`Output exists: ${output}. Use --replace for an authorized revision.`);
@@ -39,6 +42,46 @@ if (command === 'render') {
 } else {
   fail(usage);
 }
+// Checks the pinned renderer does not perform. Errors stop; warnings are printed and rendering continues.
+function preflight(text) {
+  const lines = text.split(/\r?\n/);
+  const root = realpathSync(process.cwd());
+  let fence = null, rawFence = false, panels = 0, math = false, activeMarkup = 0;
+  const warn = (m) => console.error(`! ${m}`);
+  for (let i = 0; i < lines.length; i++) {
+    const line = lines[i];
+    const open = line.match(/^(`{3,}|~{3,})(.*)$/);
+    if (open && !fence) {
+      fence = open[1];
+      rawFence = /^\s*(html|svg)\b/i.test(open[2]);
+      const src = open[2].match(/\bsrc=(?:"([^"]+)"|(\S+))/);
+      if (src) {
+        const target = resolve(src[1] ?? src[2]);
+        if (existsSync(target)) {
+          const real = realpathSync(target);
+          if (real !== root && !real.startsWith(root + sep)) fail(`L${i + 1}: src= resolves outside the workspace (${real}); a symbolic link would embed that file.`);
+        }
+      }
+      continue;
+    }
+    if (fence) {
+      if (line.startsWith(fence) && line.trim() === fence) { fence = null; continue; }
+      if (rawFence && /<script\b|\son[a-z]+\s*=|javascript:/i.test(line)) activeMarkup = activeMarkup || i + 1;
+      continue;
+    }
+    if (/^## /.test(line)) panels++;
+    if (/\$\$|\\(frac|sum|int|sqrt|le|ge)\b|\$[^$\s][^$]*[_^\\][^$]*\$/.test(line)) math = true;
+    const next = lines[i + 1] ?? '';
+    if (/^\s*\|/.test(line) && /^\s*\|?\s*:?-{3,}/.test(next)) {
+      const cells = (row) => row.trim().replace(/^\|/, '').replace(/\|$/, '').split('|').length;
+      if (cells(line) !== cells(next)) warn(`L${i + 2}: table delimiter row has ${cells(next)} cells but the header has ${cells(line)}; the table will appear as plain text.`);
+    }
+  }
+  if (activeMarkup) warn(`L${activeMarkup}: an html/svg fence contains a script, an event handler, or a javascript: URL. The renderer embeds it as-is and it runs when the page opens; never paste quoted or untrusted markup there.`);
+  if (panels === 0) fail("The draft has no '## ' panel heading, so the page would be empty.");
+  if (math) warn('Math is not typeset: $...$ appears literally and Markdown drops backslashes before punctuation (\\, becomes ,). Use code spans or Unicode (U = Σ Cᵢ/Tᵢ ≤ 1).');
+}
+
 const result = spawnSync(process.execPath, [vendor, ...vendorArgs], {
   cwd: process.cwd(),
   env: {
