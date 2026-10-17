@@ -3,15 +3,17 @@ name: explain-for-understanding
 description: >-
   Explains how or why something works, compares options for a decision, or helps a reader
   understand a technical change, lecture, or design, in plain language backed by a sourced
-  causal model. Picks the lightest sufficient form: short answer, diagram, static HTML
-  explainer, or interactive model, and checks transfer when the reader wants to learn.
+  causal model. Picks chat or page by the reader's cost: a short answer when it suffices,
+  otherwise a layered HTML explainer or interactive model with full depth, and checks
+  transfer when the reader wants to learn.
   Use when the user asks why/how something works, wants intuition, says they do not get it
   (为什么, 讲讲原理, 没看懂, 帮我理解), asks to compare or choose with tradeoffs, wants an
   explanatory page or diagram, or wants to understand (not just fix) code, an error, or a PR.
   Not for plain lookups or arithmetic, translation, copy-editing, bug fixing, defect-hunting
-  code review, or non-explanatory HTML such as landing pages.
+  code review, or non-explanatory HTML such as landing pages. For "fix this and explain
+  why", fix first, then explain briefly.
 metadata:
-  version: "3.3"
+  version: "3.4"
 ---
 
 # Explain for Understanding
@@ -91,6 +93,11 @@ The source owns its claims; the explanation owns its derivations. Cite the sourc
 beside the claim. Preserve relevant offsets, state transitions, ordering, and boundary
 conditions when simplifying a diagram. Label illustrative numbers as illustrative.
 
+Label each source by what happened to it in this session. "Verified this session" (已核对)
+means you opened or ran it now. "Basis (not checked this session)" (依据，本次未核对) means
+you cite it from memory or from another document's summary. Do not put both kinds under
+one "Sources:" label; the reader cannot tell which claims were checked.
+
 A result label must name what was checked. A local bound, rendering success, or
 passing example cannot establish a broader system property. State a limitation where
 it could change the reader's decision, without turning every explanation into an audit.
@@ -114,16 +121,20 @@ there is no required section count.
 - Use a counterexample when it resolves an actual misconception or distinguishes two
   plausible rules. A simple fact does not need an invented misconception.
 - Preserve a visible path from assumptions through mechanism to conclusion.
-- Put optional derivations, secondary cases, and audit detail behind disclosure.
+- In chat, offer optional derivations and secondary cases in one line instead of
+  including them. On a page, keep them, collapsed in a lower depth tier (§4).
 - For a familiar-work review, lead with changes and consequences; teach background
   only where understanding breaks down.
 
 Use the reader's language. Length and depth follow the task, not a fixed explanation
 template. Apply the plain-language foundation at every depth, including audit detail.
 
-## 4. Choose the least costly sufficient medium
+## 4. Choose the medium, then the depth
 
-Respect the user's requested format. Otherwise choose using this table:
+Respect the user's requested format. Otherwise pick the medium that costs the reader
+least to reach the answer: chat when a short answer suffices, a page when the subject
+needs more than a chat answer can hold. "Least costly" governs this choice only. Once a
+page is chosen, give it the depth the subject needs; do not thin a page to save words.
 
 | Medium | Use when | Avoid when |
 |---|---|---|
@@ -135,10 +146,28 @@ Respect the user's requested format. Otherwise choose using this table:
 
 A chat answer to a why/how question is usually read once, right away. Unless the user
 asks for depth, aim for about 300–400 Chinese characters (roughly 150–250 English
-words) and at most one diagram or one table. Each extra element competes with the
-mechanism for attention. If the answer needs much more, either the question is bigger
-than it looks (consider a page) or the extra detail is optional (offer it in one line
-instead of including it).
+words) and at most one diagram or one table. Count prose only: code, command output,
+tables, and source lines do not count. Each extra element competes with the mechanism
+for attention. If boundary conditions are part of the answer and push it past about 500
+characters, keep the causal chain and compress the conditions into a list of at most
+four items. If it still needs more, the question is bigger than it looks: offer a page,
+or offer the optional detail in one line.
+
+**Page depth.** This budget is for chat only. A page has no fixed length cap; structure,
+not word count, controls reading load. Organize a page in up to three tiers:
+
+| Tier | Holds | Reader gets |
+|---|---|---|
+| Overview | Thesis, a one-screen map, what to read next | The answer in under a minute |
+| Mechanism | The causal model, step-through or worked example, decisive boundary case | Can explain and predict |
+| Deep dive | Code paths, derivations, edge cases, evidence, open questions | Can verify, modify, or decide |
+
+For large projects, codebases, PRs, architecture, and topics with several interacting
+concepts, include all three tiers by default, with a table of contents, anchored
+sections, and a stated reading path ("read the overview; open a deep-dive section when
+you need it"). A single mechanism question may stop after the mechanism tier. Each
+section must still earn its place: depth means more causes, cases, and evidence, not
+restating the overview.
 
 Distinguish three useful interaction types:
 
@@ -149,16 +178,26 @@ Distinguish three useful interaction types:
 Only model exploration needs executable domain logic. A selection or comment is not
 a test of knowledge. A slider is not useful merely because it moves.
 
+Default interactions on pages: a process, protocol, state machine, or algorithm gets a
+step-through player (previous, next, play) over its states. Where a parameter changes
+the outcome, add "change the parameter → see the result" computed by the real model
+logic. Use static figures only as a fallback, when no step or parameter teaches more
+than the figure does. Every control must teach something: each step or value must
+show a state the reader needs.
+
 For HTML or executable exploration, read
 [html-rendering.md](references/html-rendering.md). It selects the bundled static-page
-renderer or a custom simulation and defines source retention and feedback handling.
+renderer or a custom page built on the bundled component kit (`assets/kit`), and
+defines the visual style guide, source retention, and feedback handling.
 For an explicitly requested video, use an available video workflow and disclose if it
 is unavailable; do not silently substitute a static page and call it a video.
 
 ## 5. Validate the artifact and support understanding
 
-**Check correctness:** verify decision-relevant arithmetic, units, boundary cases,
-labels, and source links. Test custom model code against independently calculated
+**Check correctness:** verify decision-relevant arithmetic, and every number a reader
+will compare themselves against: worked examples, illustrative tables, chart data,
+simulation outputs, and self-check answers. Verify units, boundary cases, labels, and
+source links. Test custom model code against independently calculated
 cases, including invalid inputs. Keep claims within the actual checks performed.
 Run every command and code example the reply shows, or mark it as unverified. Side
 examples get less scrutiny than the main claim, yet readers copy them directly.
@@ -177,6 +216,8 @@ checks are unavailable, describe the missing check rather than claiming it passe
   An unrequested quiz lengthens the reply and turns an answer into homework. If a
   prediction shows the mechanism well, state it with its answer as part of the
   explanation. A reusable page may include an optional, collapsed self-check.
+- On a page, reveal a prediction's answer only after the reader acts (an entry, a
+  button, a disclosure, or the next step). Never put the answer in the prompt itself.
 - For explicit learning or a demonstrated misconception, ask one meaningful prediction,
   teach-back, or transfer question. Use an unseen variation that requires the mechanism,
   not recall of a number. Explain errors and adjust only the relevant part.
