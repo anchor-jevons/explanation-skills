@@ -1,0 +1,31 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<title>efu kit demo</title><!-- kit:css --></head>
+<body><button data-kit-theme-toggle></button>
+<div class="kit-layout"><nav class="kit-toc" data-kit-toc data-scope="main"></nav>
+<main class="kit-main">
+<header class="kit-hero"><h1>Kit demo</h1><p class="kit-lede">Every component on one page; used by the kit test.</p></header>
+<h2 id="cards"><span class="kit-tier">overview</span>Cards and callouts</h2>
+<div class="kit-cards"><div class="kit-card"><h3>A</h3><p>One idea.</p></div><div class="kit-card"><h3>B</h3><p>Another.</p></div></div>
+<div class="kit-callout warn"><p>Boundary condition.</p></div>
+<h2 id="tabs">Tabs</h2>
+<div data-kit-tabs id="t1"><section data-tab="One"><p>First</p></section><section data-tab="Two"><p>Second</p></section></div>
+<h2 id="steps"><span class="kit-tier">mechanism</span>Steps</h2>
+<div class="kit-steps" data-kit-steps id="s1" data-interval="200"><div data-step="a">Step A</div><div data-step="b">Step B</div><div data-step="c">Step C</div></div>
+<h2 id="zoom">Zoom</h2>
+<figure class="kit-zoom" data-kit-zoom id="z1"><div class="kit-zoom-stage"><svg viewBox="0 0 300 80"><g class="kit-node"><rect x="10" y="20" width="80" height="36" rx="6"/><text x="50" y="43" text-anchor="middle">A</text></g><path class="kit-edge" d="M90 38H200"/><g class="kit-node hl"><rect x="200" y="20" width="80" height="36" rx="6"/><text x="240" y="43" text-anchor="middle">B</text></g></svg></div></figure>
+<h2 id="diff"><span class="kit-tier">deep dive</span>Diff</h2>
+<div data-kit-diff id="d1" data-lang="py"><pre data-before>def f(x):
+    return x + 1  # old</pre><pre data-after>def f(x):
+    if x < 0:
+        raise ValueError("x")
+    return x + 1  # old</pre></div>
+<pre data-kit-hl="js">const n = 42; // answer</pre>
+<h3 id="chart">Chart</h3><div id="c1"></div>
+<h3 id="reveal">Reveal</h3>
+<div data-kit-reveal id="r1" data-require="[name=p]"><label>Your prediction <input name="p"></label> <button data-kit-reveal-btn>Show answer</button><div data-kit-answer hidden><p>Answer: B</p></div></div>
+<details class="kit-details"><summary>Collapsed detail</summary><p>Hidden by default.</p></details>
+</main></div>
+<!-- kit:js -->
+<script>Kit.chart(document.getElementById('c1'), { label: 'demo', series: [{ name: 'a', points: [[0,1],[1,2],[2,4]] }, { name: 'b', points: [[0,2],[1,2],[2,2]] }], x: { label: 'x' }, y: { label: 'y' }, marks: [{ y: 3, label: 'limit' }] });</script>
+</body></html>
