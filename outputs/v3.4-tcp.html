@@ -1,0 +1,599 @@
+<!doctype html>
+<html lang="zh-CN"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<title>TCP 慢启动与拥塞控制：交互讲解</title><style data-kit="css">
+/* efu kit v3.4 — inline into one HTML file; no network. Light/dark via prefers-color-scheme
+   or html[data-theme]. Components are opt-in by class or data-kit-* attribute. */
+:root{--bg:#fbfbfa;--fg:#1d1f23;--muted:#5d636e;--line:#d9dce1;--card:#fff;--soft:#f1f3f5;
+--accent:#2457c5;--accent-soft:#e6edfb;--ok:#1d7a46;--ok-soft:#e3f4ea;--warn:#a35a00;--warn-soft:#fdf0dc;
+--bad:#b42318;--bad-soft:#fde8e6;--c1:#2457c5;--c2:#c2410c;--c3:#15803d;--c4:#7e22ce;
+--kw:#7e22ce;--str:#15803d;--num:#c2410c;--com:#6b7280;--radius:10px;--maxw:1180px;
+--font:system-ui,-apple-system,"Segoe UI","PingFang SC","Noto Sans CJK SC","Microsoft YaHei",sans-serif;
+--mono:ui-monospace,SFMono-Regular,Menlo,Consolas,"Noto Sans Mono CJK SC",monospace;color-scheme:light}
+@media (prefers-color-scheme:dark){:root:not([data-theme=light]){--bg:#15171b;--fg:#e7e9ec;--muted:#a2a8b3;
+--line:#343943;--card:#1d2026;--soft:#252932;--accent:#7ea6ff;--accent-soft:#1f2b46;--ok:#5fd394;--ok-soft:#173226;
+--warn:#f2b45c;--warn-soft:#3a2b14;--bad:#ff8a80;--bad-soft:#3d1c1a;--c1:#7ea6ff;--c2:#ff9a5c;--c3:#5fd394;--c4:#c89bff;
+--kw:#c89bff;--str:#7fdca0;--num:#ffb07a;--com:#8b93a1;color-scheme:dark}}
+:root[data-theme=dark]{--bg:#15171b;--fg:#e7e9ec;--muted:#a2a8b3;--line:#343943;--card:#1d2026;--soft:#252932;
+--accent:#7ea6ff;--accent-soft:#1f2b46;--ok:#5fd394;--ok-soft:#173226;--warn:#f2b45c;--warn-soft:#3a2b14;--bad:#ff8a80;
+--bad-soft:#3d1c1a;--c1:#7ea6ff;--c2:#ff9a5c;--c3:#5fd394;--c4:#c89bff;--kw:#c89bff;--str:#7fdca0;--num:#ffb07a;--com:#8b93a1;color-scheme:dark}
+*{box-sizing:border-box}
+html{scroll-behavior:smooth}
+body{margin:0;background:var(--bg);color:var(--fg);font:16px/1.7 var(--font);overflow-wrap:anywhere}
+a{color:var(--accent)}
+:focus-visible{outline:3px solid var(--accent);outline-offset:2px}
+h1,h2,h3{line-height:1.3}
+h2,h3{scroll-margin-top:1rem}
+code,pre{font-family:var(--mono);font-size:.9em}
+:not(pre)>code{background:var(--soft);padding:.1em .35em;border-radius:4px}
+pre{background:var(--soft);border:1px solid var(--line);border-radius:8px;padding:.8rem 1rem;overflow:auto;line-height:1.5}
+table{border-collapse:collapse;width:100%;font-size:.95em}
+th,td{border-bottom:1px solid var(--line);padding:.45rem .6rem;text-align:left;vertical-align:top}
+th{background:var(--soft)}
+.kit-scroll{overflow-x:auto;max-width:100%}
+.kit-muted{color:var(--muted)}
+.kit-tag{display:inline-block;font-size:.78em;padding:.05em .5em;border-radius:99px;background:var(--soft);border:1px solid var(--line)}
+.kit-tag.ok{background:var(--ok-soft);color:var(--ok);border-color:transparent}
+.kit-tag.warn{background:var(--warn-soft);color:var(--warn);border-color:transparent}
+/* layout: sticky TOC on wide screens, stacked on narrow */
+.kit-layout{display:grid;grid-template-columns:minmax(0,1fr);gap:2rem;max-width:var(--maxw);margin:0 auto;padding:1.2rem}
+@media (min-width:980px){.kit-layout{grid-template-columns:220px minmax(0,1fr)}}
+.kit-main{min-width:0;max-width:820px}
+.kit-hero{border-bottom:1px solid var(--line);margin-bottom:1rem}
+.kit-hero .kit-lede{font-size:1.12em}
+.kit-toc{font-size:.9em}
+@media (min-width:980px){.kit-toc{position:sticky;top:1rem;align-self:start;max-height:calc(100vh - 2rem);overflow:auto}}
+.kit-toc summary{cursor:pointer;font-weight:600;padding:.2rem 0}
+.kit-toc ol{list-style:none;margin:.4rem 0;padding:0}
+.kit-toc li a{display:block;padding:.2rem .5rem;border-left:3px solid transparent;color:var(--muted);text-decoration:none}
+.kit-toc li.l3 a{padding-left:1.3rem;font-size:.95em}
+.kit-toc li a[aria-current=true]{border-color:var(--accent);color:var(--fg);background:var(--accent-soft)}
+.kit-progress{position:fixed;top:0;left:0;height:3px;background:var(--accent);width:0;z-index:9}
+.kit-tier{display:inline-block;font-size:.72em;letter-spacing:.04em;text-transform:uppercase;color:var(--accent);
+border:1px solid var(--accent);border-radius:99px;padding:0 .55em;margin-right:.4em;vertical-align:middle}
+.kit-theme-toggle{position:fixed;right:.8rem;bottom:.8rem;z-index:9}
+/* cards and callouts */
+.kit-cards{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,220px),1fr));gap:.8rem;margin:1rem 0}
+.kit-card{background:var(--card);border:1px solid var(--line);border-radius:var(--radius);padding:.8rem 1rem}
+.kit-card h3,.kit-card h4{margin:.1rem 0 .3rem}
+.kit-card p{margin:.3rem 0}
+.kit-callout{border-left:4px solid var(--accent);background:var(--accent-soft);border-radius:6px;padding:.6rem 1rem;margin:1rem 0}
+.kit-callout.ok{border-color:var(--ok);background:var(--ok-soft)}
+.kit-callout.warn{border-color:var(--warn);background:var(--warn-soft)}
+.kit-callout.bad{border-color:var(--bad);background:var(--bad-soft)}
+.kit-callout>:first-child{margin-top:0}.kit-callout>:last-child{margin-bottom:0}
+/* buttons and inputs */
+.kit-btn,button.kit-btn{font:inherit;font-size:.92em;color:var(--fg);background:var(--card);border:1px solid var(--line);
+border-radius:6px;padding:.3rem .75rem;cursor:pointer;min-height:2.2rem}
+.kit-btn:hover{border-color:var(--accent)}
+.kit-btn[aria-pressed=true],.kit-btn.primary{background:var(--accent);color:var(--bg);border-color:var(--accent)}
+.kit-btn:disabled{opacity:.45;cursor:not-allowed}
+.kit-controls{display:flex;flex-wrap:wrap;gap:.5rem;align-items:center;margin:.6rem 0}
+.kit-field{display:flex;flex-direction:column;gap:.15rem;font-size:.92em}
+.kit-field input,.kit-field select,textarea{font:inherit;color:var(--fg);background:var(--card);border:1px solid var(--line);border-radius:6px;padding:.25rem .4rem}
+.kit-field input[type=range]{padding:0}
+.kit-error{color:var(--bad);font-weight:600}
+/* details */
+details.kit-details{border:1px solid var(--line);border-radius:var(--radius);background:var(--card);margin:.8rem 0}
+details.kit-details>summary{cursor:pointer;padding:.55rem 1rem;font-weight:600;list-style:none}
+details.kit-details>summary::-webkit-details-marker{display:none}
+details.kit-details>summary::before{content:"▸";display:inline-block;margin-right:.5rem;transition:transform .15s}
+details.kit-details[open]>summary::before{transform:rotate(90deg)}
+details.kit-details>:not(summary){padding:0 1rem}
+details.kit-details[open]{padding-bottom:.4rem}
+/* tabs */
+[data-kit-tabs] [role=tablist]{display:flex;flex-wrap:wrap;gap:.25rem;border-bottom:1px solid var(--line)}
+[data-kit-tabs] [role=tab]{font:inherit;background:none;border:0;border-bottom:3px solid transparent;padding:.4rem .8rem;color:var(--muted);cursor:pointer}
+[data-kit-tabs] [role=tab][aria-selected=true]{color:var(--fg);border-color:var(--accent)}
+[data-kit-tabs] [role=tabpanel]{padding:.6rem 0}
+/* step-through player */
+.kit-steps{border:1px solid var(--line);border-radius:var(--radius);background:var(--card);padding:.8rem 1rem;margin:1rem 0}
+.kit-steps [data-step][hidden]{display:none}
+.kit-steps [data-step]{animation:kit-fade .25s ease}
+.kit-step-count{font-variant-numeric:tabular-nums;color:var(--muted);font-size:.9em}
+@keyframes kit-fade{from{opacity:.2;transform:translateY(4px)}to{opacity:1;transform:none}}
+/* zoom/pan figure */
+.kit-zoom{position:relative;border:1px solid var(--line);border-radius:var(--radius);background:var(--card);overflow:hidden;touch-action:none}
+.kit-zoom .kit-zoom-stage{transform-origin:0 0;cursor:grab}
+.kit-zoom .kit-zoom-stage svg{display:block;width:100%;height:auto}
+.kit-zoom .kit-controls{position:absolute;right:.4rem;top:.1rem;margin:.3rem 0}
+.kit-zoom .kit-btn{min-height:1.9rem;padding:.1rem .55rem;background:var(--card)}
+svg text{fill:var(--fg)}
+svg .kit-node rect,svg rect.kit-node{fill:var(--card);stroke:var(--line);stroke-width:1.5}
+svg .kit-node.hl rect{stroke:var(--accent);fill:var(--accent-soft)}
+svg .kit-edge{stroke:var(--muted);stroke-width:1.5;fill:none}
+/* code + diff */
+.kit-diff{display:grid;grid-template-columns:1fr;gap:.5rem}
+@media (min-width:760px){.kit-diff{grid-template-columns:1fr 1fr}}
+.kit-diff pre{margin:0}
+.kit-diff .del{background:var(--bad-soft);display:block}
+.kit-diff .add{background:var(--ok-soft);display:block}
+.kit-diff .gap{display:block;opacity:.35}
+.kit-diff figcaption{font-size:.85em;color:var(--muted)}
+.tok-kw{color:var(--kw)}.tok-str{color:var(--str)}.tok-num{color:var(--num)}.tok-com{color:var(--com);font-style:italic}
+/* charts */
+.kit-chart svg{width:100%;height:auto;display:block}
+.kit-chart .axis{stroke:var(--muted)}.kit-chart .grid{stroke:var(--line)}
+.kit-chart .tick{font-size:11px;fill:var(--muted)}
+.kit-legend{display:flex;flex-wrap:wrap;gap:.8rem;font-size:.85em;color:var(--muted)}
+.kit-legend i{display:inline-block;width:.9em;height:.9em;border-radius:2px;margin-right:.3em;vertical-align:-.1em}
+/* reveal */
+[data-kit-reveal] [data-kit-answer][hidden]{display:none}
+@media (prefers-reduced-motion:reduce){*,*::before{animation:none!important;transition:none!important;scroll-behavior:auto!important}}
+@media print{.kit-toc,.kit-progress,.kit-theme-toggle,.kit-controls{display:none}.kit-layout{display:block}details.kit-details>:not(summary){display:block}}
+</style>
+<style>
+.seg{display:inline-block;min-width:2.1em;text-align:center;padding:.1em .3em;margin:.12em;border-radius:4px;border:1px solid var(--line);background:var(--soft);font-size:.85em;font-variant-numeric:tabular-nums}
+.seg.fly{background:var(--accent-soft);border-color:var(--accent)}
+.seg.ack{background:var(--ok-soft);border-color:var(--ok)}
+.kv{display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:.5rem;margin:.6rem 0}
+.kv div{background:var(--soft);border-radius:6px;padding:.35rem .6rem;font-size:.9em}
+.kv b{display:block;font-size:1.25em;font-variant-numeric:tabular-nums}
+.ph-ss{color:var(--c1)}.ph-ca{color:var(--c3)}.ph-loss{color:var(--bad)}
+</style></head>
+<body><button data-kit-theme-toggle></button>
+<div class="kit-layout"><nav class="kit-toc" data-kit-toc data-scope="main"></nav>
+<main class="kit-main">
+<header class="kit-hero">
+<h1>TCP 慢启动与拥塞控制</h1>
+<p class="kit-lede">慢启动其实涨得很快：每个 ACK 让拥塞窗口 cwnd 加 1 个 MSS，所以每个往返时间（RTT）cwnd 约翻倍。cwnd 到达阈值 ssthresh 后改为每个 RTT 只加 1 个 MSS。发生丢包时，ssthresh 降到在途数据的一半；超时让 cwnd 回到 1，三个重复 ACK 只让 cwnd 降到新的 ssthresh。</p>
+<p class="kit-muted">阅读路径：先看「概览」；想会推算就走「机制」里的逐步播放和参数模型；需要细节时展开「深入」。本页按 Reno/NewReno 语义（RFC 5681），按 RTT 粒度简化，见<a href="#limits">模型边界</a>。</p>
+</header>
+
+<h2 id="overview"><span class="kit-tier">概览</span>两个窗口、两个阶段、两种丢包反应</h2>
+<p>发送方一次最多能有 <code>min(cwnd, rwnd)</code> 的数据在途。rwnd 是接收方通告的窗口；cwnd 是发送方对“网络还能装多少”的估计。网络不会直接告诉发送方容量，发送方只能从 ACK（数据到了）和丢包（装不下了）推断。</p>
+<div class="kit-cards">
+<div class="kit-card"><h3 class="ph-ss">慢启动</h3><p>条件：cwnd &lt; ssthresh。</p><p>每个 ACK：cwnd += 1 MSS → 每 RTT 约 ×2。</p><p class="kit-muted">作用：快速找到大致容量。</p></div>
+<div class="kit-card"><h3 class="ph-ca">拥塞避免</h3><p>条件：cwnd &gt; ssthresh（相等时两者都可）。</p><p>每个 ACK：cwnd += MSS²/cwnd → 每 RTT 约 +1 MSS。</p><p class="kit-muted">作用：在上限附近小心试探。</p></div>
+<div class="kit-card"><h3 class="ph-loss">超时（RTO）</h3><p>ssthresh = max(在途/2, 2 MSS)</p><p>cwnd = 1 MSS，重新慢启动。</p><p class="kit-muted">含义：连 ACK 都停了，按严重拥塞处理。</p></div>
+<div class="kit-card"><h3 class="ph-loss">三个重复 ACK</h3><p>ssthresh = max(在途/2, 2 MSS)</p><p>快速恢复结束后 cwnd = ssthresh，继续拥塞避免。</p><p class="kit-muted">含义：后面的包还在到达，只丢了个别包。</p></div>
+</div>
+<div class="kit-callout"><p><strong>“慢”指什么：</strong>相对于“一开始就按 rwnd 全速发”而言是慢；相对于拥塞避免的线性增长，它是指数增长。</p></div>
+
+<h2 id="mechanism"><span class="kit-tier">机制</span>为什么“每个 ACK 加 1”等于“每 RTT 翻倍”</h2>
+<p>逐步播放一次慢启动。示意：cwnd 从 2 MSS 开始，忽略延迟 ACK。每一步只发生一个事件。</p>
+<div class="kit-steps" data-kit-steps id="acksteps" data-interval="1800">
+<div data-step="发出 2 段"><p>cwnd = 2。发送方发出段 1、2，然后等 ACK。</p><p><span class="seg fly">1</span><span class="seg fly">2</span></p><p class="kit-muted">在途 2 段 = cwnd。</p></div>
+<div data-step="ACK 1"><p>段 1 的 ACK 到达 → cwnd = 3。在途降到 1，可再发 2 段：3、4。</p><p><span class="seg ack">1✓</span><span class="seg fly">2</span><span class="seg fly">3</span><span class="seg fly">4</span></p><p class="kit-muted">一个 ACK 换来两个新段：一个补上离开的段，一个是 cwnd 增加的 1。</p></div>
+<div data-step="ACK 2"><p>段 2 的 ACK 到达 → cwnd = 4。再发 5、6。</p><p><span class="seg ack">2✓</span><span class="seg fly">3</span><span class="seg fly">4</span><span class="seg fly">5</span><span class="seg fly">6</span></p><p class="kit-muted">第 1 个 RTT 结束：cwnd 2 → 4，翻倍。</p></div>
+<div data-step="第 2 个 RTT"><p>段 3–6 的 4 个 ACK 依次到达，每个让 cwnd +1 并放出 2 个新段 → cwnd = 8，段 7–14 在途。</p><p><span class="seg fly">7</span><span class="seg fly">8</span><span class="seg fly">9</span><span class="seg fly">10</span><span class="seg fly">11</span><span class="seg fly">12</span><span class="seg fly">13</span><span class="seg fly">14</span></p><p class="kit-muted">4 → 8，又翻倍。增长量 = 本 RTT 收到的 ACK 数 = 上一轮的 cwnd。</p></div>
+<div data-step="到达 ssthresh"><p>cwnd 到达 ssthresh 后，每个 ACK 只加 MSS²/cwnd。一个 RTT 收到约 cwnd 个 ACK，合计约 +1 MSS。</p><p class="kit-muted">同样是“按 ACK 增长”，只是每个 ACK 的增量从 1 变成 1/cwnd。</p></div>
+</div>
+
+<h3 id="predict">先预测，再验证</h3>
+<div data-kit-reveal data-require="[name=pred]" id="pred">
+<p>IW = 10，ssthresh = 20，网络不丢包。第 4 个 RTT 发多少个 MSS？</p>
+<div class="kit-controls"><label class="kit-field">你的预测（MSS）<input name="pred" inputmode="numeric" size="6"></label><button data-kit-reveal-btn>看答案</button></div>
+<div data-kit-answer hidden class="kit-callout ok"><p><strong>22。</strong>第 1 个 RTT 发 10；第 2 个翻倍到 20，到达 ssthresh；之后拥塞避免，每 RTT +1：第 3 个 21，第 4 个 22。</p><p><button class="kit-btn" type="button" id="try-pred">在下面的模型里验证</button></p></div>
+</div>
+
+<h3 id="model">参数模型：改参数，看 cwnd 曲线</h3>
+<p>“网络容量”是一个简化：某个 RTT 发出的数据超过它就丢包（瓶颈队列溢出）。改变丢包反应、容量或初始 ssthresh，看锯齿怎样变化。</p>
+<form id="params" class="kit-controls" onsubmit="return false">
+<label class="kit-field">初始窗口 IW（MSS）<input id="iw" type="number" min="1" max="10" value="10"></label>
+<label class="kit-field">初始 ssthresh（MSS）<input id="ss" type="number" min="2" max="1000" value="64"></label>
+<label class="kit-field">网络容量（MSS/RTT）<input id="cap" type="range" min="10" max="200" value="80"><output id="capv">80</output></label>
+<label class="kit-field">丢包反应<select id="mode"><option value="fast">三个重复 ACK（快速恢复）</option><option value="rto">超时（RTO）</option><option value="none">不丢包</option></select></label>
+<label class="kit-field">RTT 数<input id="n" type="number" min="5" max="60" value="30"></label>
+</form>
+<p id="err" class="kit-error" role="alert" hidden></p>
+<div class="kv" aria-live="polite" id="summary"></div>
+<div id="chart" class="kit-scroll"></div>
+<details class="kit-details"><summary>逐 RTT 数据表</summary><div class="kit-scroll"><table id="tbl"><thead><tr><th>RTT</th><th>本轮发出</th><th>阶段</th><th>之后 ssthresh</th></tr></thead><tbody></tbody></table></div></details>
+<div class="kit-callout warn"><p><strong>观察点：</strong>快速恢复模式下，丢包后 cwnd 降到一半继续线性增长，形成锯齿；切换到超时，每次丢包都回到 1 再指数爬升，平均吞吐明显更低。把初始 ssthresh 调到高于容量，慢启动会一路冲到丢包。</p></div>
+
+<h2 id="deep"><span class="kit-tier">深入</span>规则原文与实现差异</h2>
+<details class="kit-details" open><summary>RFC 5681 的精确规则</summary>
+<ul>
+<li>慢启动每个确认新数据的 ACK：<code>cwnd += min(N, SMSS)</code>，N 是该 ACK 新确认的字节数（式 2）。</li>
+<li>拥塞避免每个 ACK：<code>cwnd += SMSS*SMSS/cwnd</code>（式 3），约每 RTT +1 SMSS。</li>
+<li>cwnd 与 ssthresh 相等时，发送方可以用任一算法。</li>
+<li>丢包后 <code>ssthresh = max(FlightSize/2, 2*SMSS)</code>（式 4）。</li>
+<li>超时：cwnd 不超过丢失窗口 LW = 1 个满尺寸段。</li>
+<li>快速重传/恢复：第 3 个重复 ACK 时重传，<code>cwnd = ssthresh + 3*SMSS</code>；之后每个重复 ACK +1 SMSS（“膨胀”）；确认新数据的 ACK 到达时 cwnd 设回 ssthresh（“收缩”）。</li>
+</ul></details>
+<details class="kit-details"><summary>初始窗口为什么是 10</summary>
+<p>RFC 6928（实验性）把初始窗口上限提高到 <code>min(10*MSS, max(2*MSS, 14600))</code> 字节。MSS = 1460 时正好 10 段。较早的 RFC 3390 上限约为 4 段。具体系统的取值可能不同。</p></details>
+<details class="kit-details"><summary>CUBIC 和 BBR 有什么不同</summary>
+<p>CUBIC（RFC 9438）保留慢启动和“丢包即降窗”的骨架，但拥塞避免阶段按三次函数增长，丢包时乘以 β = 0.7（Reno 是 0.5）。Linux 默认使用 CUBIC。BBR 以测得的带宽和 RTT 为主要信号，不以丢包为主，本页模型不适用。</p></details>
+<details class="kit-details" id="limits"><summary>模型边界：这个模拟器不代表什么</summary>
+<ul>
+<li>按 RTT 粒度计算：慢启动每 RTT 翻倍，到 ssthresh 时截断为 ssthresh；真实 TCP 按 ACK 增长，可能略超过 ssthresh。</li>
+<li>“容量”是硬阈值：超过即在该 RTT 检测到丢包，下一 RTT 生效。真实网络的队列、RED/ECN、多流竞争都没有建模。</li>
+<li>FlightSize 取本轮发出量；快速恢复期间的膨胀被折叠为“下一 RTT cwnd = ssthresh”。</li>
+<li>没有 rwnd 限制、延迟 ACK、SACK、RTO 退避。数字是模型输出，不是实测。</li>
+</ul></details>
+
+<h3 id="sources">来源</h3>
+<p><strong>本次已核对：</strong>RFC 5681 §3.1–3.2（式 2、3、4，LW，快速恢复步骤 2–6）；RFC 6928 式 (1)；RFC 9438 β = 0.7。均于 2026-10-17 下载原文核对。</p>
+<p><strong>依据（本次未核对）：</strong>Linux 默认 CUBIC；RFC 3390 初始窗口约 4 段；BBR 的信号来源。</p>
+<form data-explain-feedback data-title="TCP 慢启动" data-scenario="参数模型">
+<h3 id="feedback">反馈</h3>
+<label class="kit-field">哪一步还没懂？<textarea name="comment" rows="2"></textarea></label>
+<div class="kit-controls"><button type="button" class="kit-btn" data-copy-feedback>复制反馈（请粘贴回对话）</button><span data-feedback-status aria-live="polite"></span></div>
+<textarea data-feedback-output aria-label="反馈文本" hidden rows="5" style="width:100%"></textarea>
+</form>
+</main></div>
+<script data-kit="js">
+// efu kit v3.4 — vanilla JS, no network, no storage. Inline after kit.css in one HTML file.
+// Auto-initializes data-kit-* elements; window.Kit exposes highlight(), chart(), diff(), init().
+(() => {
+  'use strict';
+  const zh = () => (document.documentElement.lang || '').toLowerCase().startsWith('zh');
+  const t = (en, cn) => (zh() ? cn : en);
+  const esc = s => String(s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+  const el = (tag, attrs = {}, text) => {
+    const n = document.createElement(tag);
+    for (const [k, v] of Object.entries(attrs)) n.setAttribute(k, v);
+    if (text != null) n.textContent = text;
+    return n;
+  };
+  const reducedMotion = () => matchMedia('(prefers-reduced-motion: reduce)').matches;
+  let uid = 0;
+  const id = p => `${p}-${++uid}`;
+
+  // ---- theme: auto -> light -> dark (in memory only)
+  function theme(btn) {
+    const modes = ['auto', 'light', 'dark'];
+    const names = { auto: t('Theme: auto', '主题：跟随系统'), light: t('Theme: light', '主题：浅色'), dark: t('Theme: dark', '主题：深色') };
+    let i = 0;
+    const apply = () => {
+      const m = modes[i];
+      if (m === 'auto') document.documentElement.removeAttribute('data-theme');
+      else document.documentElement.setAttribute('data-theme', m);
+      btn.textContent = names[m];
+    };
+    btn.classList.add('kit-btn', 'kit-theme-toggle');
+    btn.type = 'button';
+    btn.addEventListener('click', () => { i = (i + 1) % 3; apply(); });
+    apply();
+  }
+
+  // ---- tabs: <div data-kit-tabs><section data-tab="Label">…</section>…</div>
+  function tabs(root) {
+    const panels = [...root.querySelectorAll(':scope > [data-tab]')];
+    if (!panels.length) return;
+    const list = el('div', { role: 'tablist' });
+    const buttons = panels.map((p, i) => {
+      const b = el('button', { type: 'button', role: 'tab', id: id('tab') }, p.dataset.tab);
+      p.id ||= id('panel');
+      p.setAttribute('role', 'tabpanel');
+      p.setAttribute('aria-labelledby', b.id);
+      p.tabIndex = 0;
+      b.setAttribute('aria-controls', p.id);
+      b.addEventListener('click', () => select(i));
+      b.addEventListener('keydown', e => {
+        const d = { ArrowRight: 1, ArrowLeft: -1 }[e.key];
+        if (d) { e.preventDefault(); select((i + d + panels.length) % panels.length, true); }
+      });
+      list.append(b);
+      return b;
+    });
+    function select(i, focus) {
+      buttons.forEach((b, j) => { b.setAttribute('aria-selected', String(i === j)); b.tabIndex = i === j ? 0 : -1; panels[j].hidden = i !== j; });
+      if (focus) buttons[i].focus();
+      root.dispatchEvent(new CustomEvent('kit:tab', { detail: { index: i } }));
+    }
+    root.prepend(list);
+    select(Math.max(0, panels.findIndex(p => p.hasAttribute('data-selected'))));
+  }
+
+  // ---- step-through player: <div class="kit-steps" data-kit-steps>[data-step]…</div>
+  // or data-steps-count="N" with a listener for 'kit:step' that draws step N.
+  function steps(root) {
+    const items = [...root.querySelectorAll(':scope [data-step]')];
+    const total = items.length || Number(root.dataset.stepsCount) || 0;
+    if (!total) return;
+    const interval = Number(root.dataset.interval) || 1600;
+    const bar = el('div', { class: 'kit-controls', role: 'group', 'aria-label': t('Step controls', '步骤控制') });
+    const prev = el('button', { type: 'button', class: 'kit-btn' }, t('◀ Prev', '◀ 上一步'));
+    const play = el('button', { type: 'button', class: 'kit-btn', 'aria-pressed': 'false' }, t('▶ Play', '▶ 播放'));
+    const next = el('button', { type: 'button', class: 'kit-btn primary' }, t('Next ▶', '下一步 ▶'));
+    const count = el('span', { class: 'kit-step-count', 'aria-live': 'polite' });
+    bar.append(prev, play, next, count);
+    root.prepend(bar);
+    let i = 0, timer = null;
+    const show = n => {
+      i = Math.max(0, Math.min(total - 1, n));
+      items.forEach((s, j) => { s.hidden = j !== i; });
+      prev.disabled = i === 0;
+      next.disabled = i === total - 1;
+      const label = items[i]?.dataset.step || '';
+      count.textContent = `${i + 1} / ${total}${label ? ' · ' + label : ''}`;
+      root.dataset.current = i;
+      root.dispatchEvent(new CustomEvent('kit:step', { detail: { index: i, total } }));
+    };
+    const stop = () => { clearInterval(timer); timer = null; play.setAttribute('aria-pressed', 'false'); play.textContent = t('▶ Play', '▶ 播放'); };
+    play.addEventListener('click', () => {
+      if (timer) return stop();
+      if (i === total - 1) show(0);
+      play.setAttribute('aria-pressed', 'true');
+      play.textContent = t('❚❚ Pause', '❚❚ 暂停');
+      // Reduced motion: still advances (the reader asked for it) but slower and without CSS animation.
+      timer = setInterval(() => { if (i >= total - 1) stop(); else show(i + 1); }, reducedMotion() ? interval * 1.5 : interval);
+    });
+    prev.addEventListener('click', () => { stop(); show(i - 1); });
+    next.addEventListener('click', () => { stop(); show(i + 1); });
+    root.kitGo = n => { stop(); show(n); };
+    show(Number(root.dataset.start) || 0);
+  }
+
+  // ---- zoom/pan: <figure class="kit-zoom" data-kit-zoom><div class="kit-zoom-stage"><svg/></div></figure>
+  function zoom(fig) {
+    const stage = fig.querySelector('.kit-zoom-stage');
+    if (!stage) return;
+    let s = 1, x = 0, y = 0, drag = null;
+    const apply = () => { stage.style.transform = `translate(${x}px,${y}px) scale(${s})`; fig.dataset.scale = s.toFixed(2); };
+    const by = f => { s = Math.min(4, Math.max(1, s * f)); if (s === 1) { x = 0; y = 0; } apply(); };
+    const bar = el('div', { class: 'kit-controls', role: 'group', 'aria-label': t('Zoom', '缩放') });
+    const mk = (txt, label, fn) => { const b = el('button', { type: 'button', class: 'kit-btn', 'aria-label': label }, txt); b.addEventListener('click', fn); bar.append(b); };
+    mk('+', t('Zoom in', '放大'), () => by(1.25));
+    mk('−', t('Zoom out', '缩小'), () => by(0.8));
+    mk('⟲', t('Reset view', '复位'), () => { s = 1; x = 0; y = 0; apply(); });
+    fig.append(bar);
+    fig.tabIndex = 0;
+    fig.setAttribute('aria-description', t('Drag to pan; + and − zoom; arrow keys pan', '拖动平移；+/− 缩放；方向键平移'));
+    fig.addEventListener('wheel', e => { if (!(e.ctrlKey || e.metaKey)) return; e.preventDefault(); by(e.deltaY < 0 ? 1.1 : 0.9); }, { passive: false });
+    stage.addEventListener('pointerdown', e => { if (s === 1) return; drag = [e.clientX - x, e.clientY - y]; stage.setPointerCapture(e.pointerId); });
+    stage.addEventListener('pointermove', e => { if (!drag) return; x = e.clientX - drag[0]; y = e.clientY - drag[1]; apply(); });
+    stage.addEventListener('pointerup', () => { drag = null; });
+    fig.addEventListener('keydown', e => {
+      const k = e.key, step = 40;
+      if (k === '+' || k === '=') by(1.25); else if (k === '-') by(0.8);
+      else if (k === 'ArrowLeft') x += step; else if (k === 'ArrowRight') x -= step;
+      else if (k === 'ArrowUp') y += step; else if (k === 'ArrowDown') y -= step; else return;
+      e.preventDefault(); apply();
+    });
+    apply();
+  }
+
+  // ---- syntax highlight (small, approximate): keywords, strings, numbers, comments
+  const KW = new Set(('if else elif for while return function def class const let var import from export new try catch except finally ' +
+    'raise throw await async in not and or is None null true false True False case esac then fi do done local echo').split(' '));
+  function highlightText(src, lang = '') {
+    const hashComment = /^(py|python|sh|bash|shell|yaml|toml|rb)$/.test(lang);
+    const re = hashComment
+      ? /(#[^\n]*)|("(?:\\.|[^"\\\n])*"|'(?:\\.|[^'\\\n])*')|\b(\d+(?:\.\d+)?)\b|([A-Za-z_][\w]*)/g
+      : /(\/\/[^\n]*|\/\*[\s\S]*?\*\/)|("(?:\\.|[^"\\\n])*"|'(?:\\.|[^'\\\n])*'|`(?:\\.|[^`\\])*`)|\b(\d+(?:\.\d+)?)\b|([A-Za-z_$][\w$]*)/g;
+    let out = '', last = 0, m;
+    while ((m = re.exec(src))) {
+      out += esc(src.slice(last, m.index));
+      const [tok, com, str, num, word] = m;
+      if (com) out += `<span class="tok-com">${esc(tok)}</span>`;
+      else if (str) out += `<span class="tok-str">${esc(tok)}</span>`;
+      else if (num) out += `<span class="tok-num">${esc(tok)}</span>`;
+      else if (word && KW.has(word)) out += `<span class="tok-kw">${esc(tok)}</span>`;
+      else out += esc(tok);
+      last = m.index + tok.length;
+    }
+    return out + esc(src.slice(last));
+  }
+  function highlight(pre) { pre.innerHTML = highlightText(pre.textContent, pre.dataset.lang || pre.dataset.kitHl || ''); }
+
+  // ---- side-by-side diff: <div data-kit-diff data-lang="py"><pre data-before>…</pre><pre data-after>…</pre></div>
+  function lcsDiff(a, b) {
+    const n = a.length, m = b.length, d = Array.from({ length: n + 1 }, () => new Uint16Array(m + 1));
+    for (let i = n - 1; i >= 0; i--) for (let j = m - 1; j >= 0; j--) d[i][j] = a[i] === b[j] ? d[i + 1][j + 1] + 1 : Math.max(d[i + 1][j], d[i][j + 1]);
+    const rows = []; let i = 0, j = 0;
+    while (i < n || j < m) {
+      if (i < n && j < m && a[i] === b[j]) { rows.push(['same', a[i], b[j]]); i++; j++; }
+      else if (j < m && (i === n || d[i][j + 1] >= d[i + 1][j])) { rows.push(['add', null, b[j]]); j++; }
+      else { rows.push(['del', a[i], null]); i++; }
+    }
+    return rows;
+  }
+  function diff(root) {
+    const before = root.querySelector('[data-before]'), after = root.querySelector('[data-after]');
+    if (!before || !after) return;
+    const lang = root.dataset.lang || '';
+    const rows = lcsDiff(before.textContent.replace(/\n$/, '').split('\n'), after.textContent.replace(/\n$/, '').split('\n'));
+    const side = (k) => rows.map(([type, l, r]) => {
+      const text = k === 0 ? l : r;
+      if (text == null) return '<span class="gap"> </span>';
+      const cls = type === 'same' ? '' : ` class="${type}"`;
+      const mark = type === 'same' ? '  ' : (type === 'add' ? '+ ' : '- ');
+      return `<span${cls}>${mark}${highlightText(text, lang)}</span>`;
+    }).join('\n');
+    const lb = root.dataset.beforeLabel || t('Before', '修改前'), la = root.dataset.afterLabel || t('After', '修改后');
+    root.classList.add('kit-diff');
+    root.innerHTML = `<figure style="margin:0"><figcaption>${esc(lb)}</figcaption><pre aria-label="${esc(lb)}">${side(0)}</pre></figure>` +
+      `<figure style="margin:0"><figcaption>${esc(la)}</figcaption><pre aria-label="${esc(la)}">${side(1)}</pre></figure>`;
+    root.kitRows = rows;
+  }
+
+  // ---- SVG chart: Kit.chart(el, {type:'line'|'bar', series:[{name, points:[[x,y]]}], x:{label}, y:{label}, marks:[{x|y,label}]})
+  const NS = 'http://www.w3.org/2000/svg';
+  function chart(host, cfg) {
+    const W = cfg.width || Math.max(320, Math.min(720, host.clientWidth || 640)), H = cfg.height || (W < 480 ? 260 : 300), P = { l: 52, r: 14, t: 14, b: 42 };
+    const pts = cfg.series.flatMap(s => s.points);
+    if (!pts.length || pts.some(p => !p.every(Number.isFinite))) throw new Error('Kit.chart: series need finite [x,y] points');
+    const xmin = cfg.x?.min ?? Math.min(...pts.map(p => p[0])), xmax = cfg.x?.max ?? Math.max(...pts.map(p => p[0]));
+    const ymin = cfg.y?.min ?? Math.min(0, ...pts.map(p => p[1])), ymax = cfg.y?.max ?? (Math.max(...pts.map(p => p[1])) * 1.08 || 1);
+    const sx = v => P.l + (v - xmin) / ((xmax - xmin) || 1) * (W - P.l - P.r);
+    const sy = v => H - P.b - (v - ymin) / ((ymax - ymin) || 1) * (H - P.t - P.b);
+    const nice = (lo, hi, n = 5) => { const st = Math.pow(10, Math.floor(Math.log10((hi - lo) / n || 1))); const s = [1, 2, 5, 10].map(k => k * st).find(k => (hi - lo) / k <= n) || st * 10; const o = []; for (let v = Math.ceil(lo / s) * s; v <= hi + 1e-9; v += s) o.push(+v.toFixed(6)); return o; };
+    const colors = ['var(--c1)', 'var(--c2)', 'var(--c3)', 'var(--c4)'];
+    let svg = `<svg xmlns="${NS}" viewBox="0 0 ${W} ${H}" role="img" aria-label="${esc(cfg.label || '')}">`;
+    for (const v of nice(ymin, ymax)) svg += `<line class="grid" x1="${P.l}" x2="${W - P.r}" y1="${sy(v)}" y2="${sy(v)}"/><text class="tick" x="${P.l - 6}" y="${sy(v) + 4}" text-anchor="end">${v}</text>`;
+    for (const v of (cfg.x?.ticks || nice(xmin, xmax, 8))) svg += `<text class="tick" x="${sx(v)}" y="${H - P.b + 16}" text-anchor="middle">${v}</text>`;
+    svg += `<line class="axis" x1="${P.l}" x2="${W - P.r}" y1="${H - P.b}" y2="${H - P.b}"/><line class="axis" x1="${P.l}" x2="${P.l}" y1="${P.t}" y2="${H - P.b}"/>`;
+    if (cfg.x?.label) svg += `<text class="tick" x="${(W + P.l) / 2}" y="${H - 6}" text-anchor="middle">${esc(cfg.x.label)}</text>`;
+    if (cfg.y?.label) svg += `<text class="tick" transform="translate(13 ${(H - P.b + P.t) / 2}) rotate(-90)" text-anchor="middle">${esc(cfg.y.label)}</text>`;
+    for (const mk of cfg.marks || []) {
+      if (mk.y != null) svg += `<line x1="${P.l}" x2="${W - P.r}" y1="${sy(mk.y)}" y2="${sy(mk.y)}" stroke="var(--warn)" stroke-dasharray="5 4"/><text class="tick" x="${W - P.r - 4}" y="${sy(mk.y) - 5}" text-anchor="end" style="fill:var(--warn)">${esc(mk.label || '')}</text>`;
+      if (mk.x != null) svg += `<line x1="${sx(mk.x)}" x2="${sx(mk.x)}" y1="${P.t}" y2="${H - P.b}" stroke="var(--bad)" stroke-dasharray="3 3"/><text class="tick" x="${sx(mk.x) + 4}" y="${P.t + 11}" style="fill:var(--bad)">${esc(mk.label || '')}</text>`;
+    }
+    const clip = id('kitclip');
+    svg += `<clipPath id="${clip}"><rect x="${P.l}" y="${P.t}" width="${W - P.l - P.r}" height="${H - P.t - P.b}"/></clipPath><g clip-path="url(#${clip})">`;
+    cfg.series.forEach((s, k) => {
+      const c = s.color || colors[k % 4];
+      if (cfg.type === 'bar') {
+        const bw = Math.max(2, (W - P.l - P.r) / (s.points.length * cfg.series.length + 1) * 0.8);
+        s.points.forEach(([x, y]) => { svg += `<rect x="${sx(x) - bw / 2 + k * bw}" y="${sy(Math.max(0, y))}" width="${bw}" height="${Math.abs(sy(0) - sy(y))}" fill="${c}"><title>${esc(s.name)}: ${x}, ${y}</title></rect>`; });
+      } else {
+        svg += `<polyline fill="none" stroke="${c}" stroke-width="2.2" points="${s.points.map(([x, y]) => `${sx(x)},${sy(y)}`).join(' ')}"/>`;
+        if (s.dots !== false) s.points.forEach(([x, y]) => { svg += `<circle cx="${sx(x)}" cy="${sy(y)}" r="2.6" fill="${c}"><title>${esc(s.name)}: ${x}, ${y}</title></circle>`; });
+      }
+    });
+    svg += '</g></svg>'; // series clipped to the plot area; values beyond y.max are cut, not rescaled
+    const legend = cfg.series.length > 1 || cfg.legend ? `<div class="kit-legend">${cfg.series.map((s, k) => `<span><i style="background:${s.color || colors[k % 4]}"></i>${esc(s.name)}</span>`).join('')}</div>` : '';
+    host.classList.add('kit-chart');
+    host.innerHTML = svg + legend;
+    return host;
+  }
+
+  // ---- TOC with reading progress: <nav class="kit-toc" data-kit-toc data-scope="main"></nav>
+  function toc(nav) {
+    const scope = document.querySelector(nav.dataset.scope || 'main') || document.body;
+    const heads = [...scope.querySelectorAll('h2[id],h3[id]')];
+    if (!heads.length) return;
+    nav.setAttribute('aria-label', nav.getAttribute('aria-label') || t('Contents', '目录'));
+    const ol = el('ol');
+    const links = heads.map(h => {
+      const li = el('li', { class: h.tagName === 'H3' ? 'l3' : 'l2' });
+      const label = h.dataset.tocLabel || [...h.childNodes].filter(c => !(c.classList && c.classList.contains('kit-tier'))).map(c => c.textContent).join('').trim();
+      const a = el('a', { href: '#' + h.id }, label);
+      li.append(a); ol.append(li); return a;
+    });
+    // Collapsed on narrow screens so the contents list does not push the answer down.
+    const box = el('details', { class: 'kit-toc-box' });
+    box.append(el('summary', {}, t('Contents', '目录')), ol);
+    box.open = matchMedia('(min-width: 980px)').matches;
+    nav.append(box);
+    const bar = el('div', { class: 'kit-progress', 'aria-hidden': 'true' });
+    document.body.prepend(bar);
+    const onScroll = () => {
+      const max = document.documentElement.scrollHeight - innerHeight;
+      bar.style.width = (max > 0 ? Math.min(100, scrollY / max * 100) : 100) + '%';
+      let cur = 0;
+      heads.forEach((h, i) => { if (h.getBoundingClientRect().top < innerHeight * 0.3) cur = i; });
+      links.forEach((a, i) => a.setAttribute('aria-current', String(i === cur)));
+    };
+    addEventListener('scroll', onScroll, { passive: true });
+    onScroll();
+  }
+
+  // ---- reveal after the reader acts: <div data-kit-reveal data-require="[name=p1]"><button data-kit-reveal-btn>…</button><div data-kit-answer hidden>…</div></div>
+  function reveal(root) {
+    const btn = root.querySelector('[data-kit-reveal-btn]'), ans = root.querySelector('[data-kit-answer]');
+    if (!btn || !ans) return;
+    btn.classList.add('kit-btn'); btn.type = 'button';
+    ans.hidden = true;
+    btn.setAttribute('aria-expanded', 'false');
+    ans.id ||= id('answer'); btn.setAttribute('aria-controls', ans.id);
+    const req = root.dataset.require ? [...root.querySelectorAll(root.dataset.require)] : [];
+    const ready = () => !req.length || req.some(i => (i.type === 'radio' || i.type === 'checkbox') ? i.checked : i.value.trim());
+    const sync = () => { btn.disabled = !ready(); };
+    req.forEach(i => i.addEventListener('input', sync)); req.forEach(i => i.addEventListener('change', sync));
+    btn.addEventListener('click', () => { ans.hidden = false; btn.setAttribute('aria-expanded', 'true'); btn.disabled = true; });
+    sync();
+  }
+
+  function init(scope = document) {
+    const run = (sel, fn) => scope.querySelectorAll(sel).forEach(n => { if (n.dataset.kitReady) return; n.dataset.kitReady = '1'; fn(n); });
+    run('[data-kit-theme-toggle]', theme);
+    run('[data-kit-tabs]', tabs);
+    run('[data-kit-steps]', steps);
+    run('[data-kit-zoom]', zoom);
+    run('[data-kit-diff]', diff);
+    run('pre[data-kit-hl]', highlight);
+    run('[data-kit-toc]', toc);
+    run('[data-kit-reveal]', reveal);
+  }
+  window.Kit = { init, chart, highlight, highlightText, lcsDiff, diff };
+  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', () => init());
+  else init();
+})();
+</script><script data-kit="feedback">
+// Inline this component in a self-contained explanation page.
+(() => {
+  for (const form of document.querySelectorAll('form[data-explain-feedback]')) {
+    const button = form.querySelector('[data-copy-feedback]');
+    const output = form.querySelector('[data-feedback-output]');
+    const status = form.querySelector('[data-feedback-status]');
+    if (!button || !output || !status) continue;
+    const chinese = document.documentElement.lang.toLowerCase().startsWith('zh');
+    const unanswered = chinese ? '未回答' : 'Unanswered';
+    form.addEventListener('submit', event => event.preventDefault());
+    button.addEventListener('click', async () => {
+      const answers = {};
+      for (const name of ['prediction', 'reasoning', 'comment']) {
+        if (!form.querySelector(`[name="${name}"]`)) continue;
+        const value = new FormData(form).get(name);
+        answers[name] = typeof value === 'string' && value.trim() ? value.trim() : unanswered;
+      }
+      const payload = {
+        type: 'explanation-feedback',
+        page: form.dataset.title || document.title,
+        scenario: form.dataset.scenario || '',
+        snapshot: form.explanationSnapshot || {},
+        answers,
+      };
+      const text = JSON.stringify(payload, null, 2);
+      // Always retain selectable text even when clipboard APIs are unavailable.
+      output.value = text;
+      output.hidden = false;
+      try {
+        if (!navigator.clipboard?.writeText) throw new Error('Clipboard unavailable');
+        await navigator.clipboard.writeText(text);
+        status.textContent = chinese ? '已复制；请粘贴回对话。' : 'Copied; paste this back into the conversation.';
+      } catch {
+        output.focus();
+        output.select();
+        status.textContent = chinese ? '请手动复制下方文本，再粘贴回对话。' : 'Copy the selected text below and paste it back into the conversation.';
+      }
+    });
+  }
+})();
+</script>
+<script id="model">
+// Per-RTT Reno model. Units: MSS. Pure: no DOM.
+function simulate({ iw, ssthresh, cap, mode, rtts }) {
+  const ints = { iw, ssthresh, rtts };
+  for (const [k, v] of Object.entries(ints)) if (!Number.isInteger(v)) throw new Error(`${k} 必须是整数`);
+  if (iw < 1 || iw > 10) throw new Error('IW 必须在 1–10 MSS');
+  if (ssthresh < 2) throw new Error('ssthresh 至少 2 MSS');
+  if (rtts < 1 || rtts > 60) throw new Error('RTT 数必须在 1–60');
+  if (mode !== 'none' && !(cap >= 1)) throw new Error('容量必须 ≥ 1');
+  let cwnd = iw, ss = ssthresh; const rows = [];
+  for (let r = 1; r <= rtts; r++) {
+    const sent = cwnd;
+    if (mode !== 'none' && sent > cap) {
+      ss = Math.max(Math.floor(sent / 2), 2);
+      cwnd = mode === 'rto' ? 1 : ss;
+      rows.push({ r, sent, phase: 'loss', ss });
+      continue;
+    }
+    const phase = cwnd < ss ? 'ss' : 'ca';
+    cwnd = phase === 'ss' ? Math.min(cwnd * 2, ss) : cwnd + 1;
+    rows.push({ r, sent, phase, ss });
+  }
+  const losses = rows.filter(x => x.phase === 'loss').length;
+  const avg = rows.reduce((a, x) => a + x.sent, 0) / rows.length;
+  return { rows, losses, avg };
+}
+if (typeof module !== 'undefined') module.exports = { simulate };
+</script>
+<script>
+(() => {
+  const $ = id => document.getElementById(id);
+  const names = { ss: '慢启动', ca: '拥塞避免', loss: '丢包' };
+  const form = document.querySelector('[data-explain-feedback]');
+  function update() {
+    $('capv').textContent = $('cap').value;
+    const p = { iw: Number($('iw').value), ssthresh: Number($('ss').value), cap: Number($('cap').value), mode: $('mode').value, rtts: Number($('n').value) };
+    let res;
+    try { res = simulate(p); $('err').hidden = true; }
+    catch (e) { $('err').textContent = '输入无效：' + e.message + '。图表未更新。'; $('err').hidden = false; $('summary').innerHTML = ''; $('chart').innerHTML = ''; $('tbl').tBodies[0].innerHTML = ''; form.explanationSnapshot = { params: p, error: e.message }; return; }
+    const pts = res.rows.map(x => [x.r, x.sent]);
+    Kit.chart($('chart'), { label: 'cwnd（每 RTT 发出的 MSS）', series: [{ name: '本轮发出（MSS）', points: pts }, { name: 'ssthresh', points: res.rows.map(x => [x.r, x.ss > 1000 ? 1000 : x.ss]), dots: false }],
+      x: { label: 'RTT 序号', min: 1, max: p.rtts }, y: { label: 'MSS', min: 0, max: Math.max(p.mode === 'none' ? 0 : p.cap * 1.15, ...pts.map(q => q[1] * 1.1), 12) }, marks: p.mode === 'none' ? [] : [{ y: p.cap, label: '网络容量' }] });
+    $('summary').innerHTML = `<div>丢包次数<b>${res.losses}</b></div><div>平均每 RTT 发出<b>${res.avg.toFixed(1)} MSS</b></div><div>第 4 个 RTT 发出<b>${res.rows[3] ? res.rows[3].sent : '—'} MSS</b></div><div>当前模式<b>${$('mode').selectedOptions[0].text.split('（')[0]}</b></div>`;
+    $('tbl').tBodies[0].innerHTML = res.rows.map(x => `<tr><td>${x.r}</td><td>${x.sent}</td><td class="ph-${x.phase}">${names[x.phase]}</td><td>${x.ss}</td></tr>`).join('');
+    form.explanationSnapshot = { params: p, losses: res.losses, avgPerRtt: +res.avg.toFixed(2), first8: res.rows.slice(0, 8).map(x => x.sent), model: 'Reno, per-RTT, simplified' };
+  }
+  $('params').addEventListener('input', update);
+  $('try-pred').addEventListener('click', () => { $('iw').value = 10; $('ss').value = 20; $('mode').value = 'none'; update(); $('model').scrollIntoView(); });
+  update();
+})();
+</script>
+</body></html>

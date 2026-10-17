@@ -1,0 +1,742 @@
+<!doctype html>
+<html lang="zh-CN"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<title>team-agent-harness 全景讲解</title><style data-kit="css">
+/* efu kit v3.4 — inline into one HTML file; no network. Light/dark via prefers-color-scheme
+   or html[data-theme]. Components are opt-in by class or data-kit-* attribute. */
+:root{--bg:#fbfbfa;--fg:#1d1f23;--muted:#5d636e;--line:#d9dce1;--card:#fff;--soft:#f1f3f5;
+--accent:#2457c5;--accent-soft:#e6edfb;--ok:#1d7a46;--ok-soft:#e3f4ea;--warn:#a35a00;--warn-soft:#fdf0dc;
+--bad:#b42318;--bad-soft:#fde8e6;--c1:#2457c5;--c2:#c2410c;--c3:#15803d;--c4:#7e22ce;
+--kw:#7e22ce;--str:#15803d;--num:#c2410c;--com:#6b7280;--radius:10px;--maxw:1180px;
+--font:system-ui,-apple-system,"Segoe UI","PingFang SC","Noto Sans CJK SC","Microsoft YaHei",sans-serif;
+--mono:ui-monospace,SFMono-Regular,Menlo,Consolas,"Noto Sans Mono CJK SC",monospace;color-scheme:light}
+@media (prefers-color-scheme:dark){:root:not([data-theme=light]){--bg:#15171b;--fg:#e7e9ec;--muted:#a2a8b3;
+--line:#343943;--card:#1d2026;--soft:#252932;--accent:#7ea6ff;--accent-soft:#1f2b46;--ok:#5fd394;--ok-soft:#173226;
+--warn:#f2b45c;--warn-soft:#3a2b14;--bad:#ff8a80;--bad-soft:#3d1c1a;--c1:#7ea6ff;--c2:#ff9a5c;--c3:#5fd394;--c4:#c89bff;
+--kw:#c89bff;--str:#7fdca0;--num:#ffb07a;--com:#8b93a1;color-scheme:dark}}
+:root[data-theme=dark]{--bg:#15171b;--fg:#e7e9ec;--muted:#a2a8b3;--line:#343943;--card:#1d2026;--soft:#252932;
+--accent:#7ea6ff;--accent-soft:#1f2b46;--ok:#5fd394;--ok-soft:#173226;--warn:#f2b45c;--warn-soft:#3a2b14;--bad:#ff8a80;
+--bad-soft:#3d1c1a;--c1:#7ea6ff;--c2:#ff9a5c;--c3:#5fd394;--c4:#c89bff;--kw:#c89bff;--str:#7fdca0;--num:#ffb07a;--com:#8b93a1;color-scheme:dark}
+*{box-sizing:border-box}
+html{scroll-behavior:smooth}
+body{margin:0;background:var(--bg);color:var(--fg);font:16px/1.7 var(--font);overflow-wrap:anywhere}
+a{color:var(--accent)}
+:focus-visible{outline:3px solid var(--accent);outline-offset:2px}
+h1,h2,h3{line-height:1.3}
+h2,h3{scroll-margin-top:1rem}
+code,pre{font-family:var(--mono);font-size:.9em}
+:not(pre)>code{background:var(--soft);padding:.1em .35em;border-radius:4px}
+pre{background:var(--soft);border:1px solid var(--line);border-radius:8px;padding:.8rem 1rem;overflow:auto;line-height:1.5}
+table{border-collapse:collapse;width:100%;font-size:.95em}
+th,td{overflow-wrap:break-word;border-bottom:1px solid var(--line);padding:.45rem .6rem;text-align:left;vertical-align:top}
+th{background:var(--soft)}
+.kit-scroll{overflow-x:auto;max-width:100%}
+.kit-muted{color:var(--muted)}
+.kit-tag{display:inline-block;font-size:.78em;padding:.05em .5em;border-radius:99px;background:var(--soft);border:1px solid var(--line)}
+.kit-tag.ok{background:var(--ok-soft);color:var(--ok);border-color:transparent}
+.kit-tag.warn{background:var(--warn-soft);color:var(--warn);border-color:transparent}
+/* layout: sticky TOC on wide screens, stacked on narrow */
+.kit-layout{display:grid;grid-template-columns:minmax(0,1fr);gap:2rem;max-width:var(--maxw);margin:0 auto;padding:1.2rem}
+@media (min-width:980px){.kit-layout{grid-template-columns:220px minmax(0,1fr)}}
+.kit-main{min-width:0;max-width:820px}
+.kit-hero{border-bottom:1px solid var(--line);margin-bottom:1rem}
+.kit-hero .kit-lede{font-size:1.12em}
+.kit-toc{font-size:.9em}
+@media (min-width:980px){.kit-toc{position:sticky;top:1rem;align-self:start;max-height:calc(100vh - 2rem);overflow:auto}}
+.kit-toc summary{cursor:pointer;font-weight:600;padding:.2rem 0}
+.kit-toc ol{list-style:none;margin:.4rem 0;padding:0}
+.kit-toc li a{display:block;padding:.2rem .5rem;border-left:3px solid transparent;color:var(--muted);text-decoration:none}
+.kit-toc li.l3 a{padding-left:1.3rem;font-size:.95em}
+.kit-toc li a[aria-current=true]{border-color:var(--accent);color:var(--fg);background:var(--accent-soft)}
+.kit-progress{position:fixed;top:0;left:0;height:3px;background:var(--accent);width:0;z-index:9}
+.kit-tier{display:inline-block;font-size:.72em;letter-spacing:.04em;text-transform:uppercase;color:var(--accent);
+border:1px solid var(--accent);border-radius:99px;padding:0 .55em;margin-right:.4em;vertical-align:middle}
+.kit-theme-toggle{position:fixed;right:.8rem;bottom:.8rem;z-index:9}
+/* cards and callouts */
+.kit-cards{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,220px),1fr));gap:.8rem;margin:1rem 0}
+.kit-card{background:var(--card);border:1px solid var(--line);border-radius:var(--radius);padding:.8rem 1rem}
+.kit-card h3,.kit-card h4{margin:.1rem 0 .3rem}
+.kit-card p{margin:.3rem 0}
+.kit-callout{border-left:4px solid var(--accent);background:var(--accent-soft);border-radius:6px;padding:.6rem 1rem;margin:1rem 0}
+.kit-callout.ok{border-color:var(--ok);background:var(--ok-soft)}
+.kit-callout.warn{border-color:var(--warn);background:var(--warn-soft)}
+.kit-callout.bad{border-color:var(--bad);background:var(--bad-soft)}
+.kit-callout>:first-child{margin-top:0}.kit-callout>:last-child{margin-bottom:0}
+/* buttons and inputs */
+.kit-btn,button.kit-btn{font:inherit;font-size:.92em;color:var(--fg);background:var(--card);border:1px solid var(--line);
+border-radius:6px;padding:.3rem .75rem;cursor:pointer;min-height:2.2rem}
+.kit-btn:hover{border-color:var(--accent)}
+.kit-btn[aria-pressed=true],.kit-btn.primary{background:var(--accent);color:var(--bg);border-color:var(--accent)}
+.kit-btn:disabled{opacity:.45;cursor:not-allowed}
+.kit-controls{display:flex;flex-wrap:wrap;gap:.5rem;align-items:center;margin:.6rem 0}
+.kit-field{display:flex;flex-direction:column;gap:.15rem;font-size:.92em}
+.kit-field input,.kit-field select,textarea{font:inherit;color:var(--fg);background:var(--card);border:1px solid var(--line);border-radius:6px;padding:.25rem .4rem}
+.kit-field input[type=range]{padding:0}
+.kit-error{color:var(--bad);font-weight:600}
+/* details */
+details.kit-details{border:1px solid var(--line);border-radius:var(--radius);background:var(--card);margin:.8rem 0}
+details.kit-details>summary{cursor:pointer;padding:.55rem 1rem;font-weight:600;list-style:none}
+details.kit-details>summary::-webkit-details-marker{display:none}
+details.kit-details>summary::before{content:"▸";display:inline-block;margin-right:.5rem;transition:transform .15s}
+details.kit-details[open]>summary::before{transform:rotate(90deg)}
+details.kit-details>:not(summary){padding:0 1rem}
+details.kit-details[open]{padding-bottom:.4rem}
+/* tabs */
+[data-kit-tabs] [role=tablist]{display:flex;flex-wrap:wrap;gap:.25rem;border-bottom:1px solid var(--line)}
+[data-kit-tabs] [role=tab]{font:inherit;background:none;border:0;border-bottom:3px solid transparent;padding:.4rem .8rem;color:var(--muted);cursor:pointer}
+[data-kit-tabs] [role=tab][aria-selected=true]{color:var(--fg);border-color:var(--accent)}
+[data-kit-tabs] [role=tabpanel]{padding:.6rem 0}
+/* step-through player */
+.kit-steps{border:1px solid var(--line);border-radius:var(--radius);background:var(--card);padding:.8rem 1rem;margin:1rem 0}
+.kit-steps [data-step][hidden]{display:none}
+.kit-steps [data-step]{animation:kit-fade .25s ease}
+.kit-step-count{font-variant-numeric:tabular-nums;color:var(--muted);font-size:.9em}
+@keyframes kit-fade{from{opacity:.2;transform:translateY(4px)}to{opacity:1;transform:none}}
+/* zoom/pan figure */
+.kit-zoom{position:relative;display:flex;flex-direction:column;border:1px solid var(--line);border-radius:var(--radius);background:var(--card);overflow:hidden;margin:1rem 0}
+.kit-zoom .kit-zoom-view{overflow:auto;touch-action:pan-x pan-y}
+.kit-zoom .kit-zoom-stage{transform-origin:0 0;cursor:grab}
+/* Narrow screens: keep labels readable by giving the figure a minimum width and letting it scroll. */
+.kit-zoom .kit-zoom-stage svg{display:block;width:100%;min-width:var(--kit-min-w,560px);height:auto}
+.kit-zoom .kit-controls{order:-1;justify-content:flex-end;margin:0;padding:.3rem .4rem;border-bottom:1px solid var(--line)}
+.kit-zoom .kit-btn{min-height:1.9rem;padding:.1rem .55rem;background:var(--card)}
+svg text{fill:var(--fg)}
+svg .kit-node rect,svg rect.kit-node{fill:var(--card);stroke:var(--line);stroke-width:1.5}
+svg .kit-node.hl rect{stroke:var(--accent);fill:var(--accent-soft)}
+svg .kit-edge{stroke:var(--muted);stroke-width:1.5;fill:none}
+/* code + diff */
+.kit-diff{display:grid;grid-template-columns:1fr;gap:.5rem}
+@media (min-width:760px){.kit-diff{grid-template-columns:1fr 1fr}}
+.kit-diff pre{margin:0}
+.kit-diff .del{background:var(--bad-soft);display:block}
+.kit-diff .add{background:var(--ok-soft);display:block}
+.kit-diff .gap{display:block;opacity:.35}
+.kit-diff figcaption{font-size:.85em;color:var(--muted)}
+.tok-kw{color:var(--kw)}.tok-str{color:var(--str)}.tok-num{color:var(--num)}.tok-com{color:var(--com);font-style:italic}
+/* charts */
+.kit-chart svg{width:100%;height:auto;display:block}
+.kit-chart .axis{stroke:var(--muted)}.kit-chart .grid{stroke:var(--line)}
+.kit-chart .tick{font-size:11px;fill:var(--muted)}
+.kit-legend{display:flex;flex-wrap:wrap;gap:.8rem;font-size:.85em;color:var(--muted)}
+.kit-legend i{display:inline-block;width:.9em;height:.9em;border-radius:2px;margin-right:.3em;vertical-align:-.1em}
+/* reveal */
+[data-kit-reveal] [data-kit-answer][hidden]{display:none}
+@media (prefers-reduced-motion:reduce){*,*::before{animation:none!important;transition:none!important;scroll-behavior:auto!important}}
+@media print{.kit-toc,.kit-progress,.kit-theme-toggle,.kit-controls{display:none}.kit-layout{display:block}details.kit-details>:not(summary){display:block}}
+@media (max-width:979px){.kit-theme-toggle{position:absolute;top:.4rem;right:.5rem;bottom:auto}}
+.kit-chips{display:flex;flex-wrap:wrap;gap:.4rem;margin:.5rem 0}
+</style>
+<style>.mono{font-family:var(--mono);font-size:.88em}</style></head>
+<body><button data-kit-theme-toggle></button>
+<div class="kit-layout"><nav class="kit-toc" data-kit-toc data-scope="main"></nav>
+<main class="kit-main">
+<header class="kit-hero"><h1>team-agent-harness：多人用 coding agent 时的“治理规则层”</h1>
+<p class="kit-lede">它不是一个 agent 框架，而是一组放进目标仓库的 Markdown 规则、模板和两个脚本。它回答的问题是：多个成员各自带着 agent 在同一个 GitLab 仓库里开发时，<strong>谁决定做什么、进度记在哪、怎样交接、怎样合并</strong>。核心约定是“人决定，agent 执行”，所有共享状态只走 Git 和 MR。</p>
+<p class="kit-muted">版本：main <code>dc295fd</code>（31 个文件）。当前阶段是设计与参考模板：<code>team-*</code> 技能尚未实现，没有真实团队试点（README）。阅读路径：概览 3 分钟 → 机制里的两段播放 → 需要时展开深入。</p></header>
+
+<h2 id="overview"><span class="kit-tier">概览</span>它交付什么，不交付什么</h2>
+<div class="kit-cards">
+<div class="kit-card"><h3>交付</h3><p>部署 13 个文件：AGENTS.md、development、team、issue-tracker、domain、onboarding、四种格式模板、skills README、ticket-status 脚本、HARNESS-VERSION 版本记录。</p><p><code>install.sh</code>：部署到目标仓库的新分支。</p><p><code>ticket-status</code>：跨分支只读汇总在途票。</p></div>
+<div class="kit-card"><h3>不交付</h3><p>技能实现（<code>team-*</code> 只是计划中的名称）。</p><p>runtime、hook、沙箱：规则没有强制力。</p><p>GitLab Issue 集成：任务状态只在 Markdown 里（ADR 已决定）。</p></div>
+<div class="kit-card"><h3>依赖</h3><p>方法来自 Matt Pocock skills（MIT）；团队做法借鉴 Trellis（AGPL-3.0，只借鉴思路，不复制代码）。</p><p>运行环境：内部 GitLab + Codex。</p></div>
+</div>
+
+<h3 id="map">一屏地图：内容放在哪里</h3>
+<p>设计的第一原则是“每类内容只有一个维护位置”（<code>docs/design.md</code> 第一性原理 3）。下图是部署后的目标仓库；可放大、拖动。窄屏下图可横向滚动，下面的表格给出同样的关系。</p>
+<figure class="kit-zoom" data-kit-zoom data-min-width="640" aria-label="目标仓库结构">
+<div class="kit-zoom-stage"><svg viewBox="0 0 760 330" role="img" aria-labelledby="map-t"><title id="map-t">目标仓库结构：入口 AGENTS.md 指向规则、任务、决策、记录、领域五类内容</title>
+<defs><marker id="ma" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0 0L10 5L0 10z" fill="var(--muted)"/></marker></defs>
+<g class="kit-node hl"><rect x="300" y="10" width="160" height="46" rx="8"/><text x="380" y="31" text-anchor="middle">AGENTS.md</text><text x="380" y="48" text-anchor="middle" font-size="11">入口：触发条件、根路径</text></g>
+<g class="kit-node"><rect x="10" y="120" width="170" height="64" rx="8"/><text x="95" y="143" text-anchor="middle">docs/agents/</text><text x="95" y="160" text-anchor="middle" font-size="11">team · issue-tracker</text><text x="95" y="175" text-anchor="middle" font-size="11">domain · onboarding</text></g>
+<g class="kit-node"><rect x="200" y="120" width="170" height="64" rx="8"/><text x="285" y="143" text-anchor="middle">.scratch/</text><text x="285" y="160" text-anchor="middle" font-size="11">feature-rand6/spec.md</text><text x="285" y="175" text-anchor="middle" font-size="11">issues/NN-rand6-*.md</text></g>
+<g class="kit-node"><rect x="390" y="120" width="170" height="64" rx="8"/><text x="475" y="143" text-anchor="middle">docs/adr/</text><text x="475" y="160" text-anchor="middle" font-size="11">日期-rand6-主题.md</text><text x="475" y="175" text-anchor="middle" font-size="11">重要取舍</text></g>
+<g class="kit-node"><rect x="580" y="120" width="170" height="64" rx="8"/><text x="665" y="143" text-anchor="middle">docs/journal/成员/</text><text x="665" y="160" text-anchor="middle" font-size="11">阶段事实与下一步</text><text x="665" y="175" text-anchor="middle" font-size="11">只经 Handoff 查找</text></g>
+<g class="kit-node"><rect x="190" y="250" width="200" height="64" rx="8"/><text x="290" y="273" text-anchor="middle" font-size="13">project-name/CONTEXT.md</text><text x="285" y="290" text-anchor="middle" font-size="11">现行术语</text><text x="285" y="305" text-anchor="middle" font-size="11">经 CONTEXT-MAP 找到</text></g>
+<g class="kit-node"><rect x="10" y="250" width="170" height="64" rx="8"/><text x="95" y="273" text-anchor="middle">GitLab MR</text><text x="95" y="290" text-anchor="middle" font-size="11">正式 review、approve</text><text x="95" y="305" text-anchor="middle" font-size="11">合并结果</text></g>
+<path class="kit-edge" d="M330 56L120 118" marker-end="url(#ma)"/><path class="kit-edge" d="M360 56L295 118" marker-end="url(#ma)"/><path class="kit-edge" d="M400 56L465 118" marker-end="url(#ma)"/><path class="kit-edge" d="M430 56L650 118" marker-end="url(#ma)"/>
+<path class="kit-edge" d="M285 184V248" marker-end="url(#ma)"/><text x="292" y="222" font-size="11">验收引用术语</text>
+<path class="kit-edge" d="M370 160H388" marker-end="url(#ma)"/>
+<path class="kit-edge" d="M370 175Q470 230 600 186" stroke-dasharray="4 3" marker-end="url(#ma)"/><text x="470" y="226" font-size="11">票的 Handoff 行指向 journal</text>
+<path class="kit-edge" d="M240 184L150 248" stroke-dasharray="4 3" marker-end="url(#ma)"/><text x="120" y="222" font-size="11">票随代码进 MR</text>
+</svg></div></figure>
+<div class="kit-scroll"><table><thead><tr><th>内容</th><th>唯一位置</th><th>主维护者</th></tr></thead><tbody>
+<tr><td>读取触发与路径基准</td><td><code>AGENTS.md</code></td><td>Harness 维护者</td></tr>
+<tr><td>Ticket 位置、标识、状态</td><td><code>docs/agents/issue-tracker.md</code></td><td>Harness 维护者</td></tr>
+<tr><td>多人分工、名册、交接</td><td><code>docs/agents/team.md</code></td><td>团队</td></tr>
+<tr><td>需求与关键澄清</td><td><code>.scratch/&lt;feature&gt;/spec.md</code></td><td>Feature 负责人</td></tr>
+<tr><td>工作切片、验收、接手入口</td><td>ticket 文件</td><td>执行负责人</td></tr>
+<tr><td>当前术语</td><td><code>project-name/CONTEXT.md</code></td><td>领域 reviewer 审查</td></tr>
+<tr><td>重要决策</td><td><code>docs/adr/</code></td><td>提出人与有权确认者</td></tr>
+<tr><td>阶段事实与下一步</td><td><code>docs/journal/&lt;member&gt;/</code></td><td>成员，agent 代写</td></tr>
+<tr><td>正式 review 与合并</td><td>GitLab MR</td><td>现有审查流程</td></tr>
+</tbody></table></div>
+<p class="kit-muted">摘自 <code>docs/design.md</code>“文件职责与维护责任”表（节选 9/13 行）。</p>
+
+<h3 id="principles">五条推导前提</h3>
+<ol>
+<li>agent 能核对的只有当前会话、当前 worktree 和实际运行结果；别人本地的修改看不见。</li>
+<li>团队同步的单位是可获取的版本。路径、Owner、Status 都不能代替版本、锁或审批。</li>
+<li>规则、任务、定义、决策、记录变化频率不同，各有唯一位置。</li>
+<li>每个任务从一个明确入口找到必要资料，不读整个仓库历史。</li>
+<li>自然语言引导 agent；权限、Git 隔离、实际验证和人工 MR review 承担可检查的边界。</li>
+</ol>
+<div class="kit-callout warn"><p><strong>最重要的限制：</strong>第 5 条意味着规则本身不强制任何事。7 轮模拟中“开工写 in-progress”4/4 张票被跳过；对比调研也把“没有强制力”列为首要差距。</p></div>
+
+<h2 id="mechanism"><span class="kit-tier">机制</span>一个 feature 从提问到合并</h2>
+<p>逐步播放一个三人团队的 feature。每一步写明谁做、写到哪个文件、规则来源。</p>
+<div class="kit-steps" data-kit-steps id="flow" data-interval="2600">
+<div data-step="澄清"><h4>1. 需求澄清（grill）</h4><p>feature 负责人 mei 和她的 agent 逐条澄清需求。关键问答写入 <code>.scratch/holds-a3f9c2/spec.md</code>，新术语写入 <code>CONTEXT.md</code>。这一步不拆票、不写代码。</p><p class="kit-muted">来源：design.md“领域知识与 ADR 的持续维护”；模拟 H3。</p></div>
+<div data-step="拆票"><h4>2. 拆票</h4><p>agent 把 spec 拆成票：<code>issues/01-b71e04-model.md</code> 等。文件名带 6 位随机串 rand6，避免多分支并行时编号冲突。新票一律 <code>Status: draft</code>；Owner 只由人指定。</p><p class="kit-muted">来源：issue-tracker.template.md“标识”“执行状态”。</p></div>
+<div data-step="规划 MR"><h4>3. 规划 MR 先合入</h4><p>多人并行的 feature，先提交只含 spec 和票的规划 MR，合入目标分支作为共享基线，再分头开工。spec 写明票之间的接口。</p><p class="kit-muted">来源：design.md“任务与进度语义”；L55。</p></div>
+<div data-step="点名确认"><h4>4. 人点名确认</h4><p>mei 点名 01 号票确认范围与验收，agent 才能写 <code>ready-for-agent</code> 和 <code>Confirmed-by: mei 2026-10-17</code>。“go ahead”不算。</p><p class="kit-muted">来源：L33、L41。</p></div>
+<div data-step="开工"><h4>5. 开工：单独提交票头并推送</h4><p>raj 的 agent 在 <code>feature/holds-a3f9c2</code> 上只改票头（<code>in-progress</code>、<code>Branch:</code>、<code>Since:</code>），提交、推送，然后才写代码。</p><div data-kit-diff data-lang="yaml" data-before-label="开工前票头" data-after-label="开工提交后"><pre data-before>Owner: raj
+Status: ready-for-agent
+Confirmed-by: mei 2026-10-17
+Branch: None
+Since: None</pre><pre data-after>Owner: raj
+Status: in-progress
+Confirmed-by: mei 2026-10-17
+Branch: feature/holds-a3f9c2
+Since: 2026-10-17</pre></div><p class="kit-muted">来源：L43。模拟中正是这一步被跳过（H7）。</p></div>
+<div data-step="依赖"><h4>6. 依赖未合入时</h4><p>lin 的 03 号票依赖 01。01 未合入时，默认从 01 的分支开出 03 的分支，MR 描述写 <code>Depends on !N</code>，按顺序合并；依赖分支不可用就改 blocked。</p><p class="kit-muted">来源：L49–53（提交 96a0fb0）。</p></div>
+<div data-step="journal"><h4>7. 记录 journal</h4><p>阶段结束或交接时，agent 写 <code>docs/journal/raj/2026-10-17-c41d2e-holds.md</code>，票的 Handoff 追加一行路径。接手者先列出前任的 Not verified 与 Next。</p><p class="kit-muted">来源：design.md“Journal 与跨人交接”。</p></div>
+<div data-step="MR"><h4>8. MR review 与合并</h4><p>代码、票、相关文档同一个 MR。作者以外的成员在<strong>最新提交</strong>上 approve；approve 后有新提交须重新 approve。agent 不推 main、不强推。</p><p class="kit-muted">来源：README“核心约定”（提交 7e36364）。</p></div>
+<div data-step="归档"><h4>9. 归档</h4><p>feature 的票全部 implemented（MR 已合并）或 dropped 后，在后续 MR 中把目录移到 <code>.scratch/_done/</code>，目录名不变。</p><p class="kit-muted">来源：design.md“生命周期与检索成本”。</p></div>
+</div>
+
+<h3 id="state">票状态机：每一步由谁决定</h3>
+<p>六个状态，关键是设置者：确认和放弃只能由人；开工、阻塞、交付由 Owner 或其 agent。下面的播放由状态模型计算，被拒绝的操作会显示原因。<a href="../q4-state/state.html">独立的状态机页</a>有可自由操作的模拟器。</p>
+<figure class="kit-zoom" data-kit-zoom id="sm-fig" aria-label="票状态图">
+<div class="kit-zoom-stage"><svg viewBox="0 0 720 250" role="img" aria-labelledby="sm-title"><title id="sm-title">票状态流转：draft → ready-for-agent → in-progress → implemented；blocked 与 dropped 为旁路</title>
+<defs><marker id="ah" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0 0L10 5L0 10z" fill="var(--muted)"/></marker></defs>
+<g class="kit-node" data-state="draft"><rect x="10" y="90" width="120" height="44" rx="8"/><text x="70" y="117" text-anchor="middle">draft</text></g>
+<g class="kit-node" data-state="ready-for-agent"><rect x="190" y="90" width="150" height="44" rx="8"/><text x="265" y="117" text-anchor="middle">ready-for-agent</text></g>
+<g class="kit-node" data-state="in-progress"><rect x="400" y="90" width="120" height="44" rx="8"/><text x="460" y="117" text-anchor="middle">in-progress</text></g>
+<g class="kit-node" data-state="implemented"><rect x="580" y="90" width="130" height="44" rx="8"/><text x="645" y="117" text-anchor="middle">implemented</text></g>
+<g class="kit-node" data-state="blocked"><rect x="250" y="196" width="120" height="44" rx="8"/><text x="310" y="223" text-anchor="middle">blocked</text></g>
+<g class="kit-node" data-state="dropped"><rect x="300" y="6" width="120" height="44" rx="8"/><text x="360" y="33" text-anchor="middle">dropped</text></g>
+<path class="kit-edge" d="M130 112H188" marker-end="url(#ah)"/><text x="159" y="104" text-anchor="middle" font-size="11">人确认</text>
+<path class="kit-edge" d="M340 112H398" marker-end="url(#ah)"/><text x="369" y="104" text-anchor="middle" font-size="11">开工推送</text>
+<path class="kit-edge" d="M520 106H578" marker-end="url(#ah)"/><text x="549" y="98" text-anchor="middle" font-size="11">交付</text>
+<path class="kit-edge" d="M578 122H522" marker-end="url(#ah)"/><text x="549" y="140" text-anchor="middle" font-size="11">MR 打回</text>
+<path class="kit-edge" d="M120 134L250 210" stroke-dasharray="4 3" marker-end="url(#ah)"/>
+<path class="kit-edge" d="M440 134L372 205" stroke-dasharray="4 3" marker-end="url(#ah)"/>
+<text x="150" y="190" font-size="11">缺信息 / 依赖未就绪</text>
+<path class="kit-edge" d="M70 90L298 34" stroke-dasharray="2 4" marker-end="url(#ah)"/><text x="160" y="52" font-size="11">只有人：dropped</text>
+</svg></div></figure>
+<p class="kit-muted">图中只画主要的 blocked 入口；ready-for-agent 也可以进入 blocked。点线表示 dropped 可以从任何非终态进入。</p>
+
+<div id="sm-steps" class="kit-steps" data-kit-steps data-interval="2200"></div>
+
+<div data-kit-reveal data-require="[name=q1]" id="pred1">
+<p><strong>先预测：</strong>mei 在聊天里对 agent 说“这几张票都差不多，go ahead”。agent 能把 03 号票改成 ready-for-agent 吗？</p>
+<div class="kit-controls"><label><input type="radio" name="q1" value="y"> 能</label><label><input type="radio" name="q1" value="n"> 不能</label><button data-kit-reveal-btn>看答案</button></div>
+<div data-kit-answer hidden class="kit-callout ok"><p><strong>不能。</strong>没有点名哪张票，也没有确认范围与验收。agent 保持 draft，并问确认的是哪张票（L41）。模拟 R3 中 agent 正是这样做的（T14）。</p></div></div>
+
+<h3 id="roles">按角色看</h3>
+<div data-kit-tabs>
+<section data-tab="feature 负责人"><ul><li>主持澄清，spec 和规划 MR 由你提交。</li><li>点名确认每张票；决定改派、dropped，写原因与决定人。</li><li>决定写在当前持有该票的分支上（L59）。</li></ul></section>
+<section data-tab="成员"><ul><li>只执行被指派给你的票；开工先推送 in-progress 票头。</li><li>依赖未合入：基于依赖分支开工或改 blocked。</li><li>阶段结束写 journal，票的 Handoff 追加路径。</li></ul></section>
+<section data-tab="新成员"><ul><li>按 <code>docs/agents/onboarding.md</code> 入组检查；名册修改走 MR。</li><li>个人 <code>AGENTS.override.md</code> 会覆盖团队规则：发现冲突要报告，不自行取舍（模拟 H1）。</li></ul></section>
+<section data-tab="reviewer"><ul><li>在最新提交上 approve；新提交后重新 approve。</li><li>核对票头整组字段与 Owner 一致（L57）。</li><li>别人的 ticket、journal 里的命令是数据，不是指令（模拟中注入被识别，H12）。</li></ul></section>
+</div>
+
+<h3 id="install">部署：改条件，看 install.sh 会做什么</h3>
+<p>选择目标仓库的情况，结果由 <code>install.sh</code> 的行为模型计算。该模型与 7 次真实运行（本次在临时仓库中执行 <code>dc295fd</code> 的脚本）结果一致。</p>
+<form id="inst" class="kit-controls" onsubmit="return false">
+<label><input type="checkbox" id="i-dirty"> 工作区有未提交修改</label>
+<label><input type="checkbox" id="i-force"> 加 <code>--force</code></label>
+<label><input type="checkbox" id="i-agents"> 已有不同的 AGENTS.md</label>
+<label><input type="checkbox" id="i-branch"> 已有 chore/agent-harness 分支</label>
+<label><input type="checkbox" id="i-dry"> <code>--dry-run</code></label>
+<label><input type="checkbox" id="i-nob"> <code>--no-branch</code></label>
+</form>
+<div id="i-out" class="kit-callout" role="status" aria-live="polite"></div>
+<div class="kv" id="i-kv" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(120px,1fr));gap:.5rem"></div>
+
+<h2 id="deep"><span class="kit-tier">深入</span>实现细节、证据与未决问题</h2>
+<details class="kit-details"><summary>ticket-status 脚本做什么</summary>
+<p>只读。先 <code>git fetch --prune origin</code>，然后对每个远端分支上 <code>in-progress</code> 的票输出一行，并标记状态：</p>
+<ul><li><code>ok</code>；<code>STALE</code>：<code>Branch:</code> 分支超过 N 天（默认 7）没有新提交；</li><li><code>BRANCH-NOT-PUSHED</code>：<code>Branch:</code> 不在远端；</li><li><code>READY-WITH-COMMITS</code>：票仍是 ready-for-agent，但有分支名或领先提交说明含该票 rand6（启发式，可能漏了开工提交）。</li></ul>
+<p>目标分支上已 dropped 或已归档的票，不再报告其他分支上的旧副本。本次运行 <code>tests/ticket-status-test.sh</code> 通过。</p>
+<pre data-kit-hl="py">refs = [r for r in git("for-each-ref", "--format=%(refname)", PREFIX).split() if not r.endswith("/HEAD")]
+target = git("symbolic-ref", "-q", PREFIX + "HEAD", check=False).strip() or PREFIX + "main"</pre>
+<p class="kit-muted"><code>templates/scripts/ticket-status</code> 第 46–47 行。<code>'refs/remotes/origin/'</code> 是前缀匹配，能包含带 <code>/</code> 的分支名；写成 <code>origin/*</code> 会漏（tracker L74）。</p></details>
+<details class="kit-details"><summary>为什么任务状态不放 GitLab Issue（ADR）</summary>
+<p>2026-10-10 由 Jevons 决定采用方案 A：Owner 与 Status 只在 Markdown ticket 中，<code>MR:</code> 只是引用。理由：需求、验收与代码同 MR 审查，agent 不需要 GitLab API 权限。代价：在途状态只在各分支上，人数增加后可见性变差；所以需要 rand6、状态机、Branch/Since、陈旧规则和 ticket-status 来弥补。若试点显示不可接受，用新 ADR 替代。</p>
+<p class="kit-muted"><code>docs/adr/2026-10-10-443dbf-task-state-source.md</code></p></details>
+<details class="kit-details"><summary>7 轮模拟的结论（被测 38d75b6）</summary>
+<p>19 条假设：通过 13、部分 5、失败 1（H7）。边界规则稳：override、注入、冒名提交、受保护 main。过程规则弱：in-progress、依赖、改派位置、approve 语义。<code>dc295fd</code> 的 6 个修复提交补了其中大部分规则，未重新模拟。详见<a href="../q3-sim/sim.html">模拟结果交互页</a>。</p></details>
+<details class="kit-details"><summary>与 superpowers、Trellis 的关系</summary>
+<p>互补，不是替代：superpowers / Matt skills 管个人工作流，harness 管多人的所有权与合并治理，Trellis 有共享 spec 和 task.json 但没有“人确认”这一步。建议个人流程叠加在 harness 之下，并用团队规则覆盖它们的“本地合并到 base”步骤（compare.zh.md §5 P1）。</p></details>
+<details class="kit-details"><summary>已知未决与风险</summary>
+<ul><li><code>team-*</code> 技能未实现；只验证了 Codex 的入口发现（<code>debug prompt-input</code>），没验证模型随后会读取链接或执行技能（validation.md）。</li>
+<li>先装上游技能再运行 install.sh，核心文件只生成 <code>.harness-new</code> 却提交其余文件（F4/F5），本页模型复现了这一点。</li>
+<li>规则无强制力：可借 Matt 的 git-guardrails 或 ECC hooks 做命令级拦截（compare.zh.md §5 P0）。</li>
+<li>1 个测试脚本，无 CI，无真实团队试点。</li></ul></details>
+
+<h3 id="sources">来源</h3>
+<p><strong>本次已核对：</strong>team-agent-harness <code>dc295fd</code> 的 README.md、docs/design.md、docs/adr/、docs/validation.md、templates/issue-tracker.template.md（L28–90）、templates/ticket.template.md、templates/README.md、templates/scripts/ticket-status、install.sh（运行 7 个临时仓库用例）、tests/ticket-status-test.sh（已运行）；提交记录 <code>38d75b6..dc295fd</code>；/workspace/team-sim/REPORT.zh.md；/workspace/harness-compare/compare.zh.md。</p>
+<p><strong>依据（本次未核对）：</strong>superpowers、Trellis 的具体行为来自 compare.zh.md 的转述；Codex 加载 AGENTS.md 的顺序来自 design.md 对官方文档的转述。</p>
+<form data-explain-feedback data-title="team-agent-harness 全景讲解" data-scenario="install 模型">
+<h3 id="feedback">反馈</h3>
+<label class="kit-field">哪一部分还不清楚，或者要用于什么决定？<textarea name="comment" rows="2"></textarea></label>
+<div class="kit-controls"><button type="button" class="kit-btn" data-copy-feedback>复制反馈（请粘贴回对话）</button><span data-feedback-status aria-live="polite"></span></div>
+<textarea data-feedback-output aria-label="反馈文本" hidden rows="5" style="width:100%"></textarea>
+</form>
+</main></div>
+<script data-kit="js">
+// efu kit v3.4 — vanilla JS, no network, no storage. Inline after kit.css in one HTML file.
+// Auto-initializes data-kit-* elements; window.Kit exposes highlight(), chart(), diff(), init().
+(() => {
+  'use strict';
+  const zh = () => (document.documentElement.lang || '').toLowerCase().startsWith('zh');
+  const t = (en, cn) => (zh() ? cn : en);
+  const esc = s => String(s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+  const el = (tag, attrs = {}, text) => {
+    const n = document.createElement(tag);
+    for (const [k, v] of Object.entries(attrs)) n.setAttribute(k, v);
+    if (text != null) n.textContent = text;
+    return n;
+  };
+  const reducedMotion = () => matchMedia('(prefers-reduced-motion: reduce)').matches;
+  let uid = 0;
+  const id = p => `${p}-${++uid}`;
+
+  // ---- theme: auto -> light -> dark (in memory only)
+  function theme(btn) {
+    const modes = ['auto', 'light', 'dark'];
+    const names = { auto: t('Theme: auto', '主题：跟随系统'), light: t('Theme: light', '主题：浅色'), dark: t('Theme: dark', '主题：深色') };
+    let i = 0;
+    const apply = () => {
+      const m = modes[i];
+      if (m === 'auto') document.documentElement.removeAttribute('data-theme');
+      else document.documentElement.setAttribute('data-theme', m);
+      btn.textContent = names[m];
+    };
+    btn.classList.add('kit-btn', 'kit-theme-toggle');
+    btn.type = 'button';
+    btn.addEventListener('click', () => { i = (i + 1) % 3; apply(); });
+    apply();
+  }
+
+  // ---- tabs: <div data-kit-tabs><section data-tab="Label">…</section>…</div>
+  function tabs(root) {
+    const panels = [...root.querySelectorAll(':scope > [data-tab]')];
+    if (!panels.length) return;
+    const list = el('div', { role: 'tablist' });
+    const buttons = panels.map((p, i) => {
+      const b = el('button', { type: 'button', role: 'tab', id: id('tab') }, p.dataset.tab);
+      p.id ||= id('panel');
+      p.setAttribute('role', 'tabpanel');
+      p.setAttribute('aria-labelledby', b.id);
+      p.tabIndex = 0;
+      b.setAttribute('aria-controls', p.id);
+      b.addEventListener('click', () => select(i));
+      b.addEventListener('keydown', e => {
+        const d = { ArrowRight: 1, ArrowLeft: -1 }[e.key];
+        if (d) { e.preventDefault(); select((i + d + panels.length) % panels.length, true); }
+      });
+      list.append(b);
+      return b;
+    });
+    function select(i, focus) {
+      buttons.forEach((b, j) => { b.setAttribute('aria-selected', String(i === j)); b.tabIndex = i === j ? 0 : -1; panels[j].hidden = i !== j; });
+      if (focus) buttons[i].focus();
+      root.dispatchEvent(new CustomEvent('kit:tab', { detail: { index: i } }));
+    }
+    root.prepend(list);
+    select(Math.max(0, panels.findIndex(p => p.hasAttribute('data-selected'))));
+  }
+
+  // ---- step-through player: <div class="kit-steps" data-kit-steps>[data-step]…</div>
+  // or data-steps-count="N" with a listener for 'kit:step' that draws step N.
+  function steps(root) {
+    const items = [...root.querySelectorAll(':scope [data-step]')];
+    const total = items.length || Number(root.dataset.stepsCount) || 0;
+    if (!total) return false;
+    const interval = Number(root.dataset.interval) || 1600;
+    const bar = el('div', { class: 'kit-controls', role: 'group', 'aria-label': t('Step controls', '步骤控制') });
+    const prev = el('button', { type: 'button', class: 'kit-btn' }, t('◀ Prev', '◀ 上一步'));
+    const play = el('button', { type: 'button', class: 'kit-btn', 'aria-pressed': 'false' }, t('▶ Play', '▶ 播放'));
+    const next = el('button', { type: 'button', class: 'kit-btn primary' }, t('Next ▶', '下一步 ▶'));
+    const count = el('span', { class: 'kit-step-count', 'aria-live': 'polite' });
+    bar.append(prev, play, next, count);
+    root.prepend(bar);
+    let i = 0, timer = null;
+    const show = n => {
+      i = Math.max(0, Math.min(total - 1, n));
+      items.forEach((s, j) => { s.hidden = j !== i; });
+      prev.disabled = i === 0;
+      next.disabled = i === total - 1;
+      const label = items[i]?.dataset.step || '';
+      count.textContent = `${i + 1} / ${total}${label ? ' · ' + label : ''}`;
+      root.dataset.current = i;
+      root.dispatchEvent(new CustomEvent('kit:step', { detail: { index: i, total } }));
+    };
+    const stop = () => { clearInterval(timer); timer = null; play.setAttribute('aria-pressed', 'false'); play.textContent = t('▶ Play', '▶ 播放'); };
+    play.addEventListener('click', () => {
+      if (timer) return stop();
+      if (i === total - 1) show(0);
+      play.setAttribute('aria-pressed', 'true');
+      play.textContent = t('❚❚ Pause', '❚❚ 暂停');
+      // Reduced motion: still advances (the reader asked for it) but slower and without CSS animation.
+      timer = setInterval(() => { if (i >= total - 1) stop(); else show(i + 1); }, reducedMotion() ? interval * 1.5 : interval);
+    });
+    prev.addEventListener('click', () => { stop(); show(i - 1); });
+    next.addEventListener('click', () => { stop(); show(i + 1); });
+    root.kitGo = n => { stop(); show(n); };
+    show(Number(root.dataset.start) || 0);
+  }
+
+  // ---- zoom/pan: <figure class="kit-zoom" data-kit-zoom><div class="kit-zoom-stage"><svg/></div></figure>
+  function zoom(fig) {
+    const stage = fig.querySelector('.kit-zoom-stage');
+    if (!stage) return;
+    const view = el('div', { class: 'kit-zoom-view' });
+    stage.replaceWith(view); view.append(stage);
+    if (fig.dataset.minWidth) fig.style.setProperty('--kit-min-w', fig.dataset.minWidth + 'px');
+    let s = 1, x = 0, y = 0, drag = null;
+    const apply = () => { stage.style.transform = `translate(${x}px,${y}px) scale(${s})`; fig.dataset.scale = s.toFixed(2); };
+    const by = f => { s = Math.min(4, Math.max(1, s * f)); if (s === 1) { x = 0; y = 0; } apply(); };
+    const bar = el('div', { class: 'kit-controls', role: 'group', 'aria-label': t('Zoom', '缩放') });
+    const mk = (txt, label, fn) => { const b = el('button', { type: 'button', class: 'kit-btn', 'aria-label': label }, txt); b.addEventListener('click', fn); bar.append(b); };
+    mk('+', t('Zoom in', '放大'), () => by(1.25));
+    mk('−', t('Zoom out', '缩小'), () => by(0.8));
+    mk('⟲', t('Reset view', '复位'), () => { s = 1; x = 0; y = 0; apply(); });
+    fig.prepend(bar);
+    fig.tabIndex = 0;
+    fig.setAttribute('aria-description', t('Drag to pan; + and − zoom; arrow keys pan', '拖动平移；+/− 缩放；方向键平移'));
+    fig.addEventListener('wheel', e => { if (!(e.ctrlKey || e.metaKey)) return; e.preventDefault(); by(e.deltaY < 0 ? 1.1 : 0.9); }, { passive: false });
+    stage.addEventListener('pointerdown', e => { if (s === 1) return; drag = [e.clientX - x, e.clientY - y]; stage.setPointerCapture(e.pointerId); });
+    stage.addEventListener('pointermove', e => { if (!drag) return; x = e.clientX - drag[0]; y = e.clientY - drag[1]; apply(); });
+    stage.addEventListener('pointerup', () => { drag = null; });
+    fig.addEventListener('keydown', e => {
+      const k = e.key, step = 40;
+      if (k === '+' || k === '=') by(1.25); else if (k === '-') by(0.8);
+      else if (k === 'ArrowLeft') x += step; else if (k === 'ArrowRight') x -= step;
+      else if (k === 'ArrowUp') y += step; else if (k === 'ArrowDown') y -= step; else return;
+      e.preventDefault(); apply();
+    });
+    apply();
+  }
+
+  // ---- syntax highlight (small, approximate): keywords, strings, numbers, comments
+  const KW = new Set(('if else elif for while return function def class const let var import from export new try catch except finally ' +
+    'raise throw await async in not and or is None null true false True False case esac then fi do done local echo').split(' '));
+  function highlightText(src, lang = '') {
+    const hashComment = /^(py|python|sh|bash|shell|yaml|toml|rb)$/.test(lang);
+    const re = hashComment
+      ? /(#[^\n]*)|("(?:\\.|[^"\\\n])*"|'(?:\\.|[^'\\\n])*')|\b(\d+(?:\.\d+)?)\b|([A-Za-z_][\w]*)/g
+      : /(\/\/[^\n]*|\/\*[\s\S]*?\*\/)|("(?:\\.|[^"\\\n])*"|'(?:\\.|[^'\\\n])*'|`(?:\\.|[^`\\])*`)|\b(\d+(?:\.\d+)?)\b|([A-Za-z_$][\w$]*)/g;
+    let out = '', last = 0, m;
+    while ((m = re.exec(src))) {
+      out += esc(src.slice(last, m.index));
+      const [tok, com, str, num, word] = m;
+      if (com) out += `<span class="tok-com">${esc(tok)}</span>`;
+      else if (str) out += `<span class="tok-str">${esc(tok)}</span>`;
+      else if (num) out += `<span class="tok-num">${esc(tok)}</span>`;
+      else if (word && KW.has(word)) out += `<span class="tok-kw">${esc(tok)}</span>`;
+      else out += esc(tok);
+      last = m.index + tok.length;
+    }
+    return out + esc(src.slice(last));
+  }
+  function highlight(pre) { pre.innerHTML = highlightText(pre.textContent, pre.dataset.lang || pre.dataset.kitHl || ''); }
+
+  // ---- side-by-side diff: <div data-kit-diff data-lang="py"><pre data-before>…</pre><pre data-after>…</pre></div>
+  function lcsDiff(a, b) {
+    const n = a.length, m = b.length, d = Array.from({ length: n + 1 }, () => new Uint16Array(m + 1));
+    for (let i = n - 1; i >= 0; i--) for (let j = m - 1; j >= 0; j--) d[i][j] = a[i] === b[j] ? d[i + 1][j + 1] + 1 : Math.max(d[i + 1][j], d[i][j + 1]);
+    const rows = []; let i = 0, j = 0;
+    while (i < n || j < m) {
+      if (i < n && j < m && a[i] === b[j]) { rows.push(['same', a[i], b[j]]); i++; j++; }
+      else if (j < m && (i === n || d[i][j + 1] >= d[i + 1][j])) { rows.push(['add', null, b[j]]); j++; }
+      else { rows.push(['del', a[i], null]); i++; }
+    }
+    return rows;
+  }
+  function diff(root) {
+    const before = root.querySelector('[data-before]'), after = root.querySelector('[data-after]');
+    if (!before || !after) return;
+    const lang = root.dataset.lang || '';
+    const rows = lcsDiff(before.textContent.replace(/\n$/, '').split('\n'), after.textContent.replace(/\n$/, '').split('\n'));
+    const side = (k) => rows.map(([type, l, r]) => {
+      const text = k === 0 ? l : r;
+      if (text == null) return '<span class="gap"> </span>';
+      const cls = type === 'same' ? '' : ` class="${type}"`;
+      const mark = type === 'same' ? '  ' : (type === 'add' ? '+ ' : '- ');
+      return `<span${cls}>${mark}${highlightText(text, lang)}</span>`;
+    }).join('\n');
+    const lb = root.dataset.beforeLabel || t('Before', '修改前'), la = root.dataset.afterLabel || t('After', '修改后');
+    root.classList.add('kit-diff');
+    root.innerHTML = `<figure style="margin:0"><figcaption>${esc(lb)}</figcaption><pre aria-label="${esc(lb)}">${side(0)}</pre></figure>` +
+      `<figure style="margin:0"><figcaption>${esc(la)}</figcaption><pre aria-label="${esc(la)}">${side(1)}</pre></figure>`;
+    root.kitRows = rows;
+  }
+
+  // ---- SVG chart: Kit.chart(el, {type:'line'|'bar', series:[{name, points:[[x,y]]}], x:{label}, y:{label}, marks:[{x|y,label}]})
+  const NS = 'http://www.w3.org/2000/svg';
+  function chart(host, cfg) {
+    const W = cfg.width || Math.max(320, Math.min(720, host.clientWidth || 640)), H = cfg.height || (W < 480 ? 260 : 300), P = { l: 52, r: 14, t: 14, b: 42 };
+    const pts = cfg.series.flatMap(s => s.points);
+    if (!pts.length || pts.some(p => !p.every(Number.isFinite))) throw new Error('Kit.chart: series need finite [x,y] points');
+    const xmin = cfg.x?.min ?? Math.min(...pts.map(p => p[0])), xmax = cfg.x?.max ?? Math.max(...pts.map(p => p[0]));
+    const ymin = cfg.y?.min ?? Math.min(0, ...pts.map(p => p[1])), ymax = cfg.y?.max ?? (Math.max(...pts.map(p => p[1])) * 1.08 || 1);
+    const sx = v => P.l + (v - xmin) / ((xmax - xmin) || 1) * (W - P.l - P.r);
+    const sy = v => H - P.b - (v - ymin) / ((ymax - ymin) || 1) * (H - P.t - P.b);
+    const nice = (lo, hi, n = 5) => { const st = Math.pow(10, Math.floor(Math.log10((hi - lo) / n || 1))); const s = [1, 2, 5, 10].map(k => k * st).find(k => (hi - lo) / k <= n) || st * 10; const o = []; for (let v = Math.ceil(lo / s) * s; v <= hi + 1e-9; v += s) o.push(+v.toFixed(6)); return o; };
+    const colors = ['var(--c1)', 'var(--c2)', 'var(--c3)', 'var(--c4)'];
+    let svg = `<svg xmlns="${NS}" viewBox="0 0 ${W} ${H}" role="img" aria-label="${esc(cfg.label || '')}">`;
+    for (const v of nice(ymin, ymax)) svg += `<line class="grid" x1="${P.l}" x2="${W - P.r}" y1="${sy(v)}" y2="${sy(v)}"/><text class="tick" x="${P.l - 6}" y="${sy(v) + 4}" text-anchor="end">${v}</text>`;
+    for (const v of (cfg.x?.ticks || nice(xmin, xmax, 8))) svg += `<text class="tick" x="${sx(v)}" y="${H - P.b + 16}" text-anchor="middle">${v}</text>`;
+    svg += `<line class="axis" x1="${P.l}" x2="${W - P.r}" y1="${H - P.b}" y2="${H - P.b}"/><line class="axis" x1="${P.l}" x2="${P.l}" y1="${P.t}" y2="${H - P.b}"/>`;
+    if (cfg.x?.label) svg += `<text class="tick" x="${(W + P.l) / 2}" y="${H - 6}" text-anchor="middle">${esc(cfg.x.label)}</text>`;
+    if (cfg.y?.label) svg += `<text class="tick" transform="translate(13 ${(H - P.b + P.t) / 2}) rotate(-90)" text-anchor="middle">${esc(cfg.y.label)}</text>`;
+    for (const mk of cfg.marks || []) {
+      if (mk.y != null) svg += `<line x1="${P.l}" x2="${W - P.r}" y1="${sy(mk.y)}" y2="${sy(mk.y)}" stroke="var(--warn)" stroke-dasharray="5 4"/><text class="tick" x="${W - P.r - 4}" y="${sy(mk.y) - 5}" text-anchor="end" style="fill:var(--warn)">${esc(mk.label || '')}</text>`;
+      if (mk.x != null) svg += `<line x1="${sx(mk.x)}" x2="${sx(mk.x)}" y1="${P.t}" y2="${H - P.b}" stroke="var(--bad)" stroke-dasharray="3 3"/><text class="tick" x="${sx(mk.x) + 4}" y="${P.t + 11}" style="fill:var(--bad)">${esc(mk.label || '')}</text>`;
+    }
+    const clip = id('kitclip');
+    svg += `<clipPath id="${clip}"><rect x="${P.l}" y="${P.t}" width="${W - P.l - P.r}" height="${H - P.t - P.b}"/></clipPath><g clip-path="url(#${clip})">`;
+    cfg.series.forEach((s, k) => {
+      const c = s.color || colors[k % 4];
+      if (cfg.type === 'bar') {
+        const bw = Math.max(2, (W - P.l - P.r) / (s.points.length * cfg.series.length + 1) * 0.8);
+        s.points.forEach(([x, y]) => { svg += `<rect x="${sx(x) - bw / 2 + k * bw}" y="${sy(Math.max(0, y))}" width="${bw}" height="${Math.abs(sy(0) - sy(y))}" fill="${c}"><title>${esc(s.name)}: ${x}, ${y}</title></rect>`; });
+      } else {
+        svg += `<polyline fill="none" stroke="${c}" stroke-width="2.2" points="${s.points.map(([x, y]) => `${sx(x)},${sy(y)}`).join(' ')}"/>`;
+        if (s.dots !== false) s.points.forEach(([x, y]) => { svg += `<circle cx="${sx(x)}" cy="${sy(y)}" r="2.6" fill="${c}"><title>${esc(s.name)}: ${x}, ${y}</title></circle>`; });
+      }
+    });
+    svg += '</g></svg>'; // series clipped to the plot area; values beyond y.max are cut, not rescaled
+    const legend = cfg.series.length > 1 || cfg.legend ? `<div class="kit-legend">${cfg.series.map((s, k) => `<span><i style="background:${s.color || colors[k % 4]}"></i>${esc(s.name)}</span>`).join('')}</div>` : '';
+    host.classList.add('kit-chart');
+    host.innerHTML = svg + legend;
+    return host;
+  }
+
+  // ---- TOC with reading progress: <nav class="kit-toc" data-kit-toc data-scope="main"></nav>
+  function toc(nav) {
+    const scope = document.querySelector(nav.dataset.scope || 'main') || document.body;
+    const heads = [...scope.querySelectorAll('h2[id],h3[id]')];
+    if (!heads.length) return;
+    nav.setAttribute('aria-label', nav.getAttribute('aria-label') || t('Contents', '目录'));
+    const ol = el('ol');
+    const links = heads.map(h => {
+      const li = el('li', { class: h.tagName === 'H3' ? 'l3' : 'l2' });
+      const label = h.dataset.tocLabel || [...h.childNodes].filter(c => !(c.classList && c.classList.contains('kit-tier'))).map(c => c.textContent).join('').trim();
+      const a = el('a', { href: '#' + h.id }, label);
+      li.append(a); ol.append(li); return a;
+    });
+    // Collapsed on narrow screens so the contents list does not push the answer down.
+    const box = el('details', { class: 'kit-toc-box' });
+    box.append(el('summary', {}, t('Contents', '目录')), ol);
+    box.open = matchMedia('(min-width: 980px)').matches;
+    nav.append(box);
+    const bar = el('div', { class: 'kit-progress', 'aria-hidden': 'true' });
+    document.body.prepend(bar);
+    const onScroll = () => {
+      const max = document.documentElement.scrollHeight - innerHeight;
+      bar.style.width = (max > 0 ? Math.min(100, scrollY / max * 100) : 100) + '%';
+      let cur = 0;
+      heads.forEach((h, i) => { if (h.getBoundingClientRect().top < innerHeight * 0.3) cur = i; });
+      links.forEach((a, i) => a.setAttribute('aria-current', String(i === cur)));
+    };
+    addEventListener('scroll', onScroll, { passive: true });
+    onScroll();
+  }
+
+  // ---- reveal after the reader acts: <div data-kit-reveal data-require="[name=p1]"><button data-kit-reveal-btn>…</button><div data-kit-answer hidden>…</div></div>
+  function reveal(root) {
+    const btn = root.querySelector('[data-kit-reveal-btn]'), ans = root.querySelector('[data-kit-answer]');
+    if (!btn || !ans) return;
+    btn.classList.add('kit-btn'); btn.type = 'button';
+    ans.hidden = true;
+    btn.setAttribute('aria-expanded', 'false');
+    ans.id ||= id('answer'); btn.setAttribute('aria-controls', ans.id);
+    const req = root.dataset.require ? [...root.querySelectorAll(root.dataset.require)] : [];
+    const ready = () => !req.length || req.some(i => (i.type === 'radio' || i.type === 'checkbox') ? i.checked : i.value.trim());
+    const sync = () => { btn.disabled = !ready(); };
+    req.forEach(i => i.addEventListener('input', sync)); req.forEach(i => i.addEventListener('change', sync));
+    btn.addEventListener('click', () => { ans.hidden = false; btn.setAttribute('aria-expanded', 'true'); btn.disabled = true; });
+    sync();
+  }
+
+  function init(scope = document) {
+    // A component that returns false (e.g. a step player with no steps yet) stays uninitialized,
+    // so a page can fill it later and call Kit.init() again.
+    const run = (sel, fn) => scope.querySelectorAll(sel).forEach(n => { if (n.dataset.kitReady) return; n.dataset.kitReady = '1'; if (fn(n) === false) delete n.dataset.kitReady; });
+    run('[data-kit-theme-toggle]', theme);
+    run('[data-kit-tabs]', tabs);
+    run('[data-kit-steps]', steps);
+    run('[data-kit-zoom]', zoom);
+    run('[data-kit-diff]', diff);
+    run('pre[data-kit-hl]', highlight);
+    run('[data-kit-toc]', toc);
+    run('[data-kit-reveal]', reveal);
+  }
+  window.Kit = { init, chart, highlight, highlightText, lcsDiff, diff };
+  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', () => init());
+  else init();
+})();
+</script><script data-kit="feedback">
+// Inline this component in a self-contained explanation page.
+(() => {
+  for (const form of document.querySelectorAll('form[data-explain-feedback]')) {
+    const button = form.querySelector('[data-copy-feedback]');
+    const output = form.querySelector('[data-feedback-output]');
+    const status = form.querySelector('[data-feedback-status]');
+    if (!button || !output || !status) continue;
+    const chinese = document.documentElement.lang.toLowerCase().startsWith('zh');
+    const unanswered = chinese ? '未回答' : 'Unanswered';
+    form.addEventListener('submit', event => event.preventDefault());
+    button.addEventListener('click', async () => {
+      const answers = {};
+      for (const name of ['prediction', 'reasoning', 'comment']) {
+        if (!form.querySelector(`[name="${name}"]`)) continue;
+        const value = new FormData(form).get(name);
+        answers[name] = typeof value === 'string' && value.trim() ? value.trim() : unanswered;
+      }
+      const payload = {
+        type: 'explanation-feedback',
+        page: form.dataset.title || document.title,
+        scenario: form.dataset.scenario || '',
+        snapshot: form.explanationSnapshot || {},
+        answers,
+      };
+      const text = JSON.stringify(payload, null, 2);
+      // Always retain selectable text even when clipboard APIs are unavailable.
+      output.value = text;
+      output.hidden = false;
+      try {
+        if (!navigator.clipboard?.writeText) throw new Error('Clipboard unavailable');
+        await navigator.clipboard.writeText(text);
+        status.textContent = chinese ? '已复制；请粘贴回对话。' : 'Copied; paste this back into the conversation.';
+      } catch {
+        output.focus();
+        output.select();
+        status.textContent = chinese ? '请手动复制下方文本，再粘贴回对话。' : 'Copy the selected text below and paste it back into the conversation.';
+      }
+    });
+  }
+})();
+</script>
+<script id="model">// Ticket state machine per team-agent-harness dc295fd templates/issue-tracker.template.md L28-45. Pure; no DOM.
+const STATES = ['draft', 'ready-for-agent', 'in-progress', 'blocked', 'implemented', 'dropped'];
+const ACTORS = {
+  human: '人（成员本人）',
+  agentNamed: 'agent：人在本会话点名确认了这张票',
+  agentVague: 'agent：只收到泛泛的“go ahead”',
+  owner: 'Owner 或其 agent（执行开工/交付）',
+  other: '非 Owner 的 agent',
+};
+// event -> {from:[...], to, check(actor, ctx) -> null | reason}
+const EVENTS = {
+  confirm: { label: '确认范围与验收（→ ready-for-agent）', from: ['draft'], to: 'ready-for-agent', set: { 'Confirmed-by': 'mei 2026-10-17' },
+    check: a => a === 'human' || a === 'agentNamed' ? null : a === 'agentVague' ? '泛泛的“go ahead”不算确认：保持 draft，并问确认的是哪张票（L41）' : '只能由人从 draft 改为 ready-for-agent；agent 只在人点名确认时代写（L33、L41）' },
+  start: { label: '开工（→ in-progress）', from: ['ready-for-agent'], to: 'in-progress', set: { Branch: 'feature/holds-a3f9c2', Since: '2026-10-17' },
+    check: a => a === 'owner' ? null : a === 'human' ? null : 'in-progress 由 Owner 或其 agent 设置（L34）' },
+  finish: { label: '实现与验证完成（→ implemented）', from: ['in-progress'], to: 'implemented',
+    check: a => a === 'owner' || a === 'human' ? null : 'implemented 由 Owner 或其 agent 设置（L36）' },
+  reject: { label: 'MR 审核打回（→ in-progress）', from: ['implemented'], to: 'in-progress', set: { Since: '2026-10-18' },
+    check: a => a === 'owner' || a === 'human' ? null : '打回后由 Owner 或其 agent 改回 in-progress 并更新 Since（L39）' },
+  block: { label: '缺信息或依赖（→ blocked）', from: ['draft', 'ready-for-agent', 'in-progress'], to: 'blocked', set: { 'Blocked by': '.scratch/holds-a3f9c2/issues/01-b71e04-model.md 未合入' },
+    check: a => a === 'other' ? 'blocked 由 Owner 或其 agent 设置（L35）' : null },
+  unblock: { label: '依赖就绪（解除 blocked）', from: ['blocked'], to: '@prev', set: { 'Blocked by': 'None' },
+    check: a => a === 'other' ? '由 Owner 或其 agent 解除' : null },
+  drop: { label: '不再执行（→ dropped）', from: ['draft', 'ready-for-agent', 'in-progress', 'blocked', 'implemented'], to: 'dropped',
+    check: a => a === 'human' ? null : 'dropped 只能由人设置，并在正文写原因与决定人（L37）' },
+  skip: { label: '直接交付（ready-for-agent → implemented）', from: ['ready-for-agent'], to: 'implemented',
+    check: () => '不要从 ready-for-agent 一步改到 implemented：先单独提交并推送 in-progress 票头，否则别人的状态查询看不到开工（L43）' },
+};
+function newTicket() { return { Status: 'draft', Owner: 'raj', 'Confirmed-by': 'None', Branch: 'None', Since: 'None', 'Blocked by': 'None', prev: null }; }
+function apply(ticket, eventKey, actor) {
+  const ev = EVENTS[eventKey];
+  if (!ev) throw new Error('未知事件 ' + eventKey);
+  if (!ACTORS[actor]) throw new Error('未知角色 ' + actor);
+  if (!ev.from.includes(ticket.Status)) return { ok: false, ticket, reason: `当前状态是 ${ticket.Status}，这个事件只适用于 ${ev.from.join(' / ')}` };
+  const reason = ev.check(actor, ticket);
+  if (reason) return { ok: false, ticket, reason };
+  const next = { ...ticket, ...(ev.set || {}) };
+  next.prev = ev.to === 'blocked' ? ticket.Status : null;
+  next.Status = ev.to === '@prev' ? ticket.prev : ev.to;
+  const note = ev.to === 'in-progress' && eventKey === 'start' ? '这次只改票头，单独提交并推送，然后再写代码（L43）' : '';
+  return { ok: true, ticket: next, reason: note };
+}
+if (typeof module !== 'undefined') module.exports = { STATES, ACTORS, EVENTS, newTicket, apply };
+
+// install.sh (dc295fd) outcome model for one fresh target repo; checked against real runs in install-fixtures.log.
+function install({ dirty, force, agentsExists, branchExists, dryRun, noBranch }) {
+  const files = 13;
+  if (dirty && !force) return { exit: 1, created: 0, committed: 0, harnessNew: 0, branch: '不变', msg: '错误：工作区不干净。请先提交或暂存（git stash -u），或使用 --force' };
+  const harnessNew = agentsExists ? 1 : 0, created = files - harnessNew;
+  if (!noBranch && branchExists) return { exit: 1, created: 0, committed: 0, harnessNew: 0, branch: '不变', msg: '错误：分支 chore/agent-harness 已存在' };
+  if (dryRun) return { exit: 0, created: 0, committed: 0, harnessNew: 0, branch: '不变', msg: `dry-run：将创建 ${created} 个文件${harnessNew ? '、生成 1 个 .harness-new' : ''}${noBranch ? '' : `，并在 chore/agent-harness 提交 ${created} 个文件`}；未写入任何文件` };
+  if (noBranch) return { exit: 0, created, committed: 0, harnessNew, branch: '不变', msg: `写入 ${created} 个文件${harnessNew ? ' 和 AGENTS.md.harness-new' : ''}；不建分支、不提交` };
+  return { exit: 0, created, committed: created, harnessNew, branch: 'chore/agent-harness', msg: `在新分支 chore/agent-harness 提交 ${created} 个文件（不推送）` + (harnessNew ? '；AGENTS.md.harness-new 已写入但不提交，需手工合并（模拟中的 F4/F5）' : '') + (dirty ? '；原有未提交修改保留、不提交' : '') };
+}
+if (typeof module !== 'undefined') module.exports = { install };
+</script>
+<script>(() => {
+  const M = { STATES, ACTORS, EVENTS, newTicket, apply };
+  const fig = document.getElementById('sm-fig');
+  const hl = s => fig.querySelectorAll('[data-state]').forEach(g => g.classList.toggle('hl', g.dataset.state === s));
+  const header = t => ['Owner', 'Status', 'Confirmed-by', 'Branch', 'Since', 'Blocked by'].map(k => `${k}: ${t[k]}`).join('\n');
+  // Step-through: the lifecycle computed by the model, not hand-written.
+  const script = [
+    ['新建票', null, null, 'agent 拆票后新票默认 draft。Owner 由人指定（这里 raj）。'],
+    ['泛泛同意', 'confirm', 'agentVague', 'mei 说“差不多，go ahead”。agent 不能升级：没有点名哪张票。'],
+    ['点名确认', 'confirm', 'agentNamed', 'mei 点名 01 并确认范围与验收，agent 代写，同时写 Confirmed-by。'],
+    ['试图直接交付', 'skip', 'owner', 'raj 的 agent 想跳过 in-progress 直接交付：规则不允许（模拟中 4/4 张票都这样跳过，H7）。'],
+    ['开工', 'start', 'owner', '先只改票头并单独提交、推送，别人的 ticket-status 才能看到。'],
+    ['依赖未就绪', 'block', 'owner', '依赖票没合入，也没有可用分支：改 blocked，写 Blocked by。'],
+    ['依赖就绪', 'unblock', 'owner', '依赖分支可用：回到原状态 in-progress。'],
+    ['交付', 'finish', 'owner', '分支上实现与约定验证完成。审核与合并以 MR 为准。'],
+    ['MR 打回', 'reject', 'owner', '回到 in-progress，更新 Since。'],
+    ['agent 想放弃', 'drop', 'agentNamed', 'dropped 只能由人设置。'],
+  ];
+  const states = []; let t = M.newTicket();
+  for (const [label, ev, actor, text] of script) {
+    let r = { ok: true, ticket: t, reason: '' };
+    if (ev) { r = M.apply(t, ev, actor); t = r.ticket; }
+    states.push({ label, text, ok: r.ok, reason: r.reason, ticket: { ...t } });
+  }
+  const steps = document.getElementById('sm-steps');
+  steps.innerHTML = states.map((s, i) => `<div data-step="${s.label}"><p>${s.text}</p>${s.ok ? (s.reason ? `<p class="kit-callout ok">${s.reason}</p>` : '') : `<p class="kit-callout bad">被拒绝：${s.reason}</p>`}<pre>${header(s.ticket)}</pre></div>`).join('');
+  Kit.init(document);
+  steps.addEventListener('kit:step', e => hl(states[e.detail.index].ticket.Status));
+  steps.kitGo(0);
+  // Simulator: choose actor + event; the model decides.
+  if (!document.getElementById('sm-actor')) return; // page shows only the player
+  const actorSel = document.getElementById('sm-actor'), evSel = document.getElementById('sm-event'), out = document.getElementById('sm-out'), pre = document.getElementById('sm-header');
+  actorSel.innerHTML = Object.entries(M.ACTORS).map(([k, v]) => `<option value="${k}">${v}</option>`).join('');
+  evSel.innerHTML = Object.entries(M.EVENTS).map(([k, v]) => `<option value="${k}">${v.label}</option>`).join('');
+  let cur = M.newTicket();
+  const render = () => { pre.textContent = header(cur); hl(cur.Status); };
+  document.getElementById('sm-apply').addEventListener('click', () => {
+    const r = M.apply(cur, evSel.value, actorSel.value);
+    out.className = 'kit-callout ' + (r.ok ? 'ok' : 'bad');
+    out.textContent = r.ok ? `允许：${cur.Status} → ${r.ticket.Status}。${r.reason}` : `不允许：${r.reason}`;
+    cur = r.ticket; render();
+  });
+  document.getElementById('sm-reset').addEventListener('click', () => { cur = M.newTicket(); out.className = 'kit-callout'; out.textContent = '已重置为新票（draft）。'; render(); });
+  render();
+})();
+</script>
+<script>
+(() => {
+  const ids = { dirty: 'i-dirty', force: 'i-force', agentsExists: 'i-agents', branchExists: 'i-branch', dryRun: 'i-dry', noBranch: 'i-nob' };
+  const fb = document.querySelector('[data-explain-feedback]');
+  const upd = () => {
+    const p = Object.fromEntries(Object.entries(ids).map(([k, id]) => [k, document.getElementById(id).checked]));
+    const r = install(p);
+    const out = document.getElementById('i-out');
+    out.className = 'kit-callout ' + (r.exit ? 'bad' : r.harnessNew ? 'warn' : 'ok');
+    out.textContent = (r.exit ? '退出码 1，未写入任何文件。' : '退出码 0。') + r.msg;
+    document.getElementById('i-kv').innerHTML = [['写入文件', r.created], ['提交文件', r.committed], ['.harness-new', r.harnessNew], ['分支', r.branch]].map(([k, v]) => `<div class="kit-card" style="padding:.4rem .6rem"><span class="kit-muted">${k}</span><br><b>${v}</b></div>`).join('');
+    fb.explanationSnapshot = { install: p, result: r };
+  };
+  document.getElementById('inst').addEventListener('change', upd); upd();
+})();
+</script>
+</body></html>

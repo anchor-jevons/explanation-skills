@@ -4,7 +4,7 @@
 
 ## 当前版本
 
-- [explain-for-understanding v3.3](explain-for-understanding/SKILL.md)：以直接、直白的文字为基础，按读者任务选择短答、图文或交互模型；区分证据强度，并支持反馈与理解检查。
+- [explain-for-understanding v3.4](explain-for-understanding/SKILL.md)：以直接、直白的文字为基础，按读者任务选择短答、图文或交互模型；页面分概览/机制/深入三层，自带离线组件库；区分证据强度，并支持反馈与理解检查。
 - [answer-me-with-html 原版](answer-me-with-html/SKILL.md)：此前从 QingYunA 官方仓库保存的参考文件，保持原样。
 - [原始 v2](archive/explain-for-understanding-v2-SKILL.md)：用户提供的原文件，逐字节保留。
 
@@ -22,12 +22,21 @@ node explain-for-understanding/scripts/render.mjs render outputs/v3-window-expla
 
 渲染入口会保留已有输出。经授权修订时增加 `--replace`。渲染状态保存在目标工作目录的 `work/explanation-renderer/`；自动打开浏览器与更新检查均关闭。
 
+需要折叠、标签页、逐步播放、参数模型、可缩放架构图或深色模式的页面，用自带组件库（`explain-for-understanding/assets/kit/`）写 HTML，再内联成单个离线文件：
+
+```bash
+node explain-for-understanding/scripts/render.mjs page explain-for-understanding/assets/kit/demo.html work/kit-demo.html
+node explain-for-understanding/scripts/test-kit.mjs
+```
+
 渲染器固定于上游 commit `19b2b5b07676d3e65c83ca9a7b6621f300b54c92`。其原始文件、MIT 许可证与校验信息位于 [vendor 目录](explain-for-understanding/scripts/vendor/answer-me-with-html/SOURCE.json)。
 
 ## 记录与示例
 
 - [v2 与参考版的比较](analysis/comparison-2026-10-09.md)
 - [v3 变更和验证边界](analysis/v3-validation-2026-10-09.md)
+- [v3.4 验证：前后对比与 harness 实测](analysis/v3.4-validation-2026-10-17.md)
+- 示例页：[TCP 拥塞控制（交互）](outputs/v3.4-tcp.html)、[team-agent-harness 全景](outputs/v3.4-harness.html)
 - [静态教学页](outputs/v3-window-explanation.html)，[可编辑草稿](outputs/v3-window-explanation.md)
 - [交互模型示例](outputs/v3-capacity-demo.html)：使用教学示意参数，展示容量检查、结论边界与反馈导出。
 
@@ -35,7 +44,7 @@ node explain-for-understanding/scripts/render.mjs render outputs/v3-window-expla
 
 ## 来源与授权
 
-`explain-for-understanding` 从一次技术解释对比中发展而来：v2 是该次讨论生成、由使用者提供的原始文件；v3/v3.1/v3.2/v3.3 是本项目对解释方法、渲染与反馈流程的迭代。它不是 QingYunA 的原版 skill，也不是 Karpathy 发布或认可的规范。
+`explain-for-understanding` 从一次技术解释对比中发展而来：v2 是该次讨论生成、由使用者提供的原始文件；v3/v3.1/v3.2/v3.3/v3.4 是本项目对解释方法、渲染与反馈流程的迭代。它不是 QingYunA 的原版 skill，也不是 Karpathy 发布或认可的规范。
 
 本项目新增的 skill、脚本、文档和示例采用 [MIT License](LICENSE)。QingYunA 的参考 skill、固定渲染器以及示例中包含的上游页面代码保留上游 MIT 授权，具体来源见 [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md)。
 
