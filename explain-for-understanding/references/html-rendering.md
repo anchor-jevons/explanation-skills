@@ -173,14 +173,16 @@ Skeleton:
 | Collapsible | `details.kit-details > summary` | Native disclosure, styled; open in print |
 | Tabs | `[data-kit-tabs] > section[data-tab="Label"]` | ARIA tabs, arrow keys; emits `kit:tab` |
 | Step player | `.kit-steps[data-kit-steps]` with `[data-step="label"]` children, or `data-steps-count="N"` | Prev / Play / Next, step count in a live region; emits `kit:step` `{index,total}`; `el.kitGo(n)`; reduced motion removes animation and slows play |
-| Zoom/pan | `figure.kit-zoom[data-kit-zoom] > .kit-zoom-stage > svg` | +/−/reset buttons, drag, Ctrl+wheel, arrow keys; never hijacks plain scroll |
+| Zoom/pan | `figure.kit-zoom[data-kit-zoom data-min-width="640"] > .kit-zoom-stage > svg` | +/−/reset toolbar, drag, Ctrl+wheel, arrow keys; never hijacks plain scroll; below the minimum width (default 560 px) the figure scrolls sideways so labels stay readable |
 | SVG helpers | `.kit-node` (`.hl`) groups, `.kit-edge` paths | Theme-aware node and edge colors |
 | Code and diff | `pre[data-kit-hl="py"]`; `[data-kit-diff] > pre[data-before] + pre[data-after]` | Approximate highlighting; line diff side by side (stacked when narrow) |
 | Chart | `Kit.chart(el, {type:'line'\|'bar', series:[{name, points:[[x,y]]}], x:{label}, y:{label}, marks:[{x\|y,label}]})` | SVG chart with ticks, legend, threshold marks; rejects non-finite points; call again to update |
 | Reveal | `[data-kit-reveal data-require="[name=p]"]` with `[data-kit-reveal-btn]` and `[data-kit-answer]` | Answer stays hidden until the reader enters or picks a prediction and clicks |
 
 A `kit:step` listener registered after init misses the first event; call `el.kitGo(0)`
-after adding it. Highlighting is approximate (keywords, strings, numbers, comments).
+after adding it. A step player filled by script after load stays uninitialized until you
+call `Kit.init()` again. Charts size to their container when drawn; redraw after a
+large layout change. Highlighting is approximate (keywords, strings, numbers, comments).
 
 ### Visual style guide
 

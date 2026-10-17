@@ -66,7 +66,7 @@
   function steps(root) {
     const items = [...root.querySelectorAll(':scope [data-step]')];
     const total = items.length || Number(root.dataset.stepsCount) || 0;
-    if (!total) return;
+    if (!total) return false;
     const interval = Number(root.dataset.interval) || 1600;
     const bar = el('div', { class: 'kit-controls', role: 'group', 'aria-label': t('Step controls', '步骤控制') });
     const prev = el('button', { type: 'button', class: 'kit-btn' }, t('◀ Prev', '◀ 上一步'));
@@ -105,6 +105,9 @@
   function zoom(fig) {
     const stage = fig.querySelector('.kit-zoom-stage');
     if (!stage) return;
+    const view = el('div', { class: 'kit-zoom-view' });
+    stage.replaceWith(view); view.append(stage);
+    if (fig.dataset.minWidth) fig.style.setProperty('--kit-min-w', fig.dataset.minWidth + 'px');
     let s = 1, x = 0, y = 0, drag = null;
     const apply = () => { stage.style.transform = `translate(${x}px,${y}px) scale(${s})`; fig.dataset.scale = s.toFixed(2); };
     const by = f => { s = Math.min(4, Math.max(1, s * f)); if (s === 1) { x = 0; y = 0; } apply(); };
@@ -113,7 +116,7 @@
     mk('+', t('Zoom in', '放大'), () => by(1.25));
     mk('−', t('Zoom out', '缩小'), () => by(0.8));
     mk('⟲', t('Reset view', '复位'), () => { s = 1; x = 0; y = 0; apply(); });
-    fig.append(bar);
+    fig.prepend(bar);
     fig.tabIndex = 0;
     fig.setAttribute('aria-description', t('Drag to pan; + and − zoom; arrow keys pan', '拖动平移；+/− 缩放；方向键平移'));
     fig.addEventListener('wheel', e => { if (!(e.ctrlKey || e.metaKey)) return; e.preventDefault(); by(e.deltaY < 0 ? 1.1 : 0.9); }, { passive: false });
@@ -187,7 +190,7 @@
   // ---- SVG chart: Kit.chart(el, {type:'line'|'bar', series:[{name, points:[[x,y]]}], x:{label}, y:{label}, marks:[{x|y,label}]})
   const NS = 'http://www.w3.org/2000/svg';
   function chart(host, cfg) {
-    const W = cfg.width || 640, H = cfg.height || 300, P = { l: 52, r: 14, t: 14, b: 42 };
+    const W = cfg.width || Math.max(320, Math.min(720, host.clientWidth || 640)), H = cfg.height || (W < 480 ? 260 : 300), P = { l: 52, r: 14, t: 14, b: 42 };
     const pts = cfg.series.flatMap(s => s.points);
     if (!pts.length || pts.some(p => !p.every(Number.isFinite))) throw new Error('Kit.chart: series need finite [x,y] points');
     const xmin = cfg.x?.min ?? Math.min(...pts.map(p => p[0])), xmax = cfg.x?.max ?? Math.max(...pts.map(p => p[0]));
@@ -206,6 +209,8 @@
       if (mk.y != null) svg += `<line x1="${P.l}" x2="${W - P.r}" y1="${sy(mk.y)}" y2="${sy(mk.y)}" stroke="var(--warn)" stroke-dasharray="5 4"/><text class="tick" x="${W - P.r - 4}" y="${sy(mk.y) - 5}" text-anchor="end" style="fill:var(--warn)">${esc(mk.label || '')}</text>`;
       if (mk.x != null) svg += `<line x1="${sx(mk.x)}" x2="${sx(mk.x)}" y1="${P.t}" y2="${H - P.b}" stroke="var(--bad)" stroke-dasharray="3 3"/><text class="tick" x="${sx(mk.x) + 4}" y="${P.t + 11}" style="fill:var(--bad)">${esc(mk.label || '')}</text>`;
     }
+    const clip = id('kitclip');
+    svg += `<clipPath id="${clip}"><rect x="${P.l}" y="${P.t}" width="${W - P.l - P.r}" height="${H - P.t - P.b}"/></clipPath><g clip-path="url(#${clip})">`;
     cfg.series.forEach((s, k) => {
       const c = s.color || colors[k % 4];
       if (cfg.type === 'bar') {
@@ -216,7 +221,7 @@
         if (s.dots !== false) s.points.forEach(([x, y]) => { svg += `<circle cx="${sx(x)}" cy="${sy(y)}" r="2.6" fill="${c}"><title>${esc(s.name)}: ${x}, ${y}</title></circle>`; });
       }
     });
-    svg += '</svg>';
+    svg += '</g></svg>'; // series clipped to the plot area; values beyond y.max are cut, not rescaled
     const legend = cfg.series.length > 1 || cfg.legend ? `<div class="kit-legend">${cfg.series.map((s, k) => `<span><i style="background:${s.color || colors[k % 4]}"></i>${esc(s.name)}</span>`).join('')}</div>` : '';
     host.classList.add('kit-chart');
     host.innerHTML = svg + legend;
@@ -271,7 +276,9 @@
   }
 
   function init(scope = document) {
-    const run = (sel, fn) => scope.querySelectorAll(sel).forEach(n => { if (n.dataset.kitReady) return; n.dataset.kitReady = '1'; fn(n); });
+    // A component that returns false (e.g. a step player with no steps yet) stays uninitialized,
+    // so a page can fill it later and call Kit.init() again.
+    const run = (sel, fn) => scope.querySelectorAll(sel).forEach(n => { if (n.dataset.kitReady) return; n.dataset.kitReady = '1'; if (fn(n) === false) delete n.dataset.kitReady; });
     run('[data-kit-theme-toggle]', theme);
     run('[data-kit-tabs]', tabs);
     run('[data-kit-steps]', steps);
