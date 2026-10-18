@@ -8,6 +8,9 @@ const usage = `Usage:
   node render.mjs render <draft.md> <output.html> [--replace]
   node render.mjs help [component]
   node render.mjs list
+  node render.mjs page <source.html> <output.html> [--replace]
+
+"page" (Route B) inlines assets/kit and assets/feedback.js into one offline file.
 
 Run from the target workspace. State stays in work/explanation-renderer.
 An existing output requires --replace. No auto-open or update checks.`;
@@ -16,6 +19,12 @@ const fail = (message) => { console.error(message); process.exit(1); };
 if (Number(process.versions.node.split('.')[0]) < 20) fail('Node.js 20 or newer is required.');
 if (!command || command === '--help') {
   console.log(usage);
+  process.exit(0);
+}
+if (command === 'page') {
+  if (rest.length < 2 || rest.length > 3 || (rest[2] && rest[2] !== '--replace')) fail(usage);
+  const { buildPage } = await import('./page.mjs');
+  try { buildPage(rest[0], rest[1], rest[2] === '--replace'); } catch (e) { fail(e.message); }
   process.exit(0);
 }
 const vendor = fileURLToPath(new URL('./vendor/answer-me-with-html/am.mjs', import.meta.url));

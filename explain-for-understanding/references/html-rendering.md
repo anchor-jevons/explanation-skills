@@ -3,6 +3,15 @@
 Choose one route before writing the page. Keep the content model independent of CSS
 and layout. The renderer does not establish the truth of the explanation.
 
+| Need | Route |
+|---|---|
+| A text-first page: tables, short flows, source quotations, panel comments | A: bundled renderer |
+| Collapsible depth tiers, tabs, step-through playback, parameter models, zoomable architecture, code diffs, charts, dark mode | B: custom page on the bundled kit |
+
+Route A is quicker but has no collapse, tabs, or scripts. For a large project, a PR, an
+architecture, or a process explained step by step, use Route B. Both routes produce a
+single offline file.
+
 ## Route A: static explanation or review page
 
 Use the bundled, pinned Answer me with HTML renderer for text, tables, relation diagrams,
@@ -35,7 +44,8 @@ disagree, establish which is current rather than silently merging them.
 ### Draft shape
 
 Use `doc` for a causal reading path and `sheet` for familiar-work reviews or comparisons.
-Set the language explicitly. Choose only the sections required by the reader's task.
+Set the language explicitly. Include the depth tiers the subject needs (SKILL.md §4);
+omit a section only when it adds nothing for this reader, not to keep the page short.
 Use `style: 80` for the default relaxed writing check unless the user requests otherwise.
 It warns about mechanically detectable issues; it is neither a compliance score nor a
 replacement for the skill's plain-language rules. Apply those rules manually in Route B.
@@ -79,7 +89,12 @@ Known renderer limits (tested 2026-10-10 against the pinned commit):
   when the page opens. Never put quoted, fetched, or user-supplied markup in them; show
   such markup as a code block.
 - A table whose delimiter row does not match its header renders as plain text with
-  pipes. Check every table in the rendered page. Writing warnings are evidence to inspect, not a reason to
+  pipes. Check every table in the rendered page.
+- There is no collapse or `details` component. A self-check answer cannot be hidden:
+  put it in a separate final panel titled "Answer", or use Route B.
+- A `flow` with more than four nodes truncates edge labels at about 390 px width. Use a
+  table or a `sequence`, split the flow, or use Route B with a scrollable or zoomable
+  figure. Writing warnings are evidence to inspect, not a reason to
 damage terminology or omit necessary qualifiers. Re-check changed claims after edits.
 
 Inspect the rendered page in desktop and phone-width views. Check labels, clipped
@@ -109,13 +124,92 @@ Do not infer understanding from a click, acceptance, or lack of a reply.
 After feedback, revise the Truth Model when evidence changes; revise only the teaching
 step when the evidence is sound but the reader's explanation reveals a gap.
 
-## Route B: an executable model or a necessary custom representation
+## Route B: a rich page on the bundled kit
 
-Use a self-contained HTML file when a parameter experiment or state exploration teaches
-something a few static scenarios cannot. The static renderer is not a general JavaScript
-simulation host: do not assume embedded scripts will survive its sanitization.
+Use a self-contained HTML file for layered pages, step-through processes, parameter
+experiments, and any representation Route A cannot show. The static renderer is not a
+general JavaScript host: do not assume embedded scripts survive its sanitization.
 
-Before writing controls, specify:
+### Building the page
+
+Write an editable source page that uses kit classes and placeholders, then inline:
+
+```bash
+node "$SKILL_DIR/scripts/render.mjs" page work/explanation.src.html outputs/explanation.html
+```
+
+`page` replaces `<!-- kit:css -->`, `<!-- kit:js -->`, and `<!-- kit:feedback -->` with the
+contents of `assets/kit/kit.css`, `assets/kit/kit.js`, and `assets/feedback.js`. It fails
+on any external script, stylesheet, image, `@import`, `url(http…)`, or network call
+(`fetch`, `XMLHttpRequest`, `WebSocket`), and on unknown placeholders. Keep the source
+page as the editable source, and rebuild with `--replace` after a revision. Put page
+scripts after `<!-- kit:js -->`. `assets/kit/demo.html` shows every component; copy from
+it. Run `node "$SKILL_DIR/scripts/test-kit.mjs"` after changing the kit.
+
+Skeleton:
+
+```html
+<!doctype html><html lang="zh-CN"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1"><title>…</title>
+<!-- kit:css --></head><body><button data-kit-theme-toggle></button>
+<div class="kit-layout"><nav class="kit-toc" data-kit-toc data-scope="main"></nav>
+<main class="kit-main">
+  <header class="kit-hero"><h1>…</h1><p class="kit-lede">Thesis in one or two sentences.</p></header>
+  <h2 id="overview"><span class="kit-tier">概览</span>…</h2> …
+  <h2 id="mechanism"><span class="kit-tier">机制</span>…</h2> …
+  <h2 id="deep"><span class="kit-tier">深入</span>…</h2> <details class="kit-details">…</details>
+</main></div>
+<!-- kit:js --><script>/* model + DOM updates */</script></body></html>
+```
+
+### Kit components
+
+| Component | Markup | Behavior |
+|---|---|---|
+| Theme | CSS variables; `<button data-kit-theme-toggle>` | Follows `prefers-color-scheme`; button cycles auto/light/dark in memory only |
+| Layout and TOC | `.kit-layout`, `nav.kit-toc[data-kit-toc]`, `h2[id]`/`h3[id]` | Sticky TOC on wide screens, collapsed on narrow; current section and reading-progress bar |
+| Tier label | `<span class="kit-tier">` inside a heading | Marks overview / mechanism / deep dive; left out of TOC text |
+| Cards, callouts | `.kit-cards > .kit-card`; `.kit-callout` (`.ok`, `.warn`, `.bad`) | Responsive grid; semantic color plus text |
+| Collapsible | `details.kit-details > summary` | Native disclosure, styled; open in print |
+| Tabs | `[data-kit-tabs] > section[data-tab="Label"]` | ARIA tabs, arrow keys; emits `kit:tab` |
+| Step player | `.kit-steps[data-kit-steps]` with `[data-step="label"]` children, or `data-steps-count="N"` | Prev / Play / Next, step count in a live region; emits `kit:step` `{index,total}`; `el.kitGo(n)`; reduced motion removes animation and slows play |
+| Zoom/pan | `figure.kit-zoom[data-kit-zoom data-min-width="640"] > .kit-zoom-stage > svg` | +/−/reset toolbar, drag, Ctrl+wheel, arrow keys; never hijacks plain scroll; below the minimum width (default 560 px) the figure scrolls sideways so labels stay readable |
+| SVG helpers | `.kit-node` (`.hl`) groups, `.kit-edge` paths | Theme-aware node and edge colors |
+| Code and diff | `pre[data-kit-hl="py"]`; `[data-kit-diff] > pre[data-before] + pre[data-after]` | Approximate highlighting; line diff side by side (stacked when narrow) |
+| Chart | `Kit.chart(el, {type:'line'\|'bar', series:[{name, points:[[x,y]]}], x:{label}, y:{label}, marks:[{x\|y,label}]})` | SVG chart with ticks, legend, threshold marks; rejects non-finite points; call again to update |
+| Reveal | `[data-kit-reveal data-require="[name=p]"]` with `[data-kit-reveal-btn]` and `[data-kit-answer]` | Answer stays hidden until the reader enters or picks a prediction and clicks |
+
+A `kit:step` listener registered after init misses the first event; call `el.kitGo(0)`
+after adding it. A step player filled by script after load stays uninitialized until you
+call `Kit.init()` again. Charts size to their container when drawn; redraw after a
+large layout change. Highlighting is approximate (keywords, strings, numbers, comments).
+
+### Visual style guide
+
+- **One reading column.** Text up to about 820 px; the TOC sits beside it on wide
+  screens. Figures may use the column width and scroll or zoom inside their container.
+- **Lead each tier with its point.** The hero states the thesis; each `h2` opens with
+  one sentence that says what the section establishes.
+- **Use components for meaning.** Cards for parallel parts (modules, options); a callout
+  for a boundary condition or a common mistake, not for decoration; tabs for
+  alternative views of the same thing (by role, before/after); `details` for deep-dive
+  material a reader may skip.
+- **Color carries a label.** Use `--ok`, `--warn`, `--bad`, and `--accent` only with
+  text that states the same meaning. Series colors `--c1…--c4` work in both themes.
+- **Check both themes.** Use the CSS variables instead of fixed colors, including in
+  SVG (`fill="var(--fg)"`), so dark mode stays legible.
+- **Diagrams.** Up to about seven nodes per figure; label edges with the action.
+  Architecture with more nodes goes in a zoomable figure plus a table of the same
+  relations so narrow screens do not depend on the figure.
+- **Motion.** Animate only state changes the reader triggers; no autoplay on load.
+
+### Interactions
+
+For a process, protocol, or state machine, default to a step player whose steps are the
+real states. Where a parameter changes the outcome, add controls that recompute the
+result from the model. Use a static figure when no step or value adds understanding.
+
+Before writing parameter controls, specify:
 
 - The question the experiment answers and the reader's predicted observation.
 - Input names, units, allowed ranges, and defaults.
@@ -144,7 +238,7 @@ For a custom page, include a `<form data-explain-feedback>` with:
 - A `textarea data-feedback-output` with an accessible label, initially hidden, for
   copy fallback; and a `[data-feedback-status]` live status region.
 
-Read and inline [`assets/feedback.js`](../assets/feedback.js) in the final HTML. It
+Inline [`assets/feedback.js`](../assets/feedback.js) with `<!-- kit:feedback -->`. It
 serializes the reader's text and current model snapshot as data; it submits nothing.
 Call `form.explanationSnapshot = { ... }` whenever the model state changes, using only
 the parameter, result, and assumption fields relevant to the question. The component
@@ -157,7 +251,8 @@ message or storing a response is separate from generating this local artifact.
 
 ### Acceptance
 
-Run the model cases and exercise the actual page controls. Inspect a narrow and a
-desktop layout. Check that changing a parameter changes every dependent output and
+Run the model cases and exercise the actual page controls. Inspect a narrow (about
+390 px) and a desktop layout, in light and dark color schemes. Confirm that the browser
+console has no errors and that the page makes no network requests. Check that changing a parameter changes every dependent output and
 the exported snapshot. Report any untested behavior explicitly. A working simulator
 still does not establish that the reader understands it.
