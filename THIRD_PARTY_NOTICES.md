@@ -10,3 +10,11 @@
 - The static HTML example contains renderer-generated CSS and JavaScript from this upstream project. The upstream MIT notice applies to that included code as well.
 
 The root LICENSE covers this project's original material. It does not replace the upstream license or assert ownership of upstream code. External linked articles and posts remain their authors' work; they are cited as sources, not relicensed here.
+
+## diagram-design
+
+- Source: https://github.com/cathrynlavery/diagram-design, pinned to commit `550fd66`.
+- License: MIT; see [LICENSE](explain-for-understanding/vendor/diagram-design/LICENSE) and its
+  [THIRD_PARTY_LICENSES.md](explain-for-understanding/vendor/diagram-design/THIRD_PARTY_LICENSES.md).
+- Vendored subset and modifications: [PROVENANCE.md](explain-for-understanding/vendor/diagram-design/PROVENANCE.md).
+- Fonts: Geist, Geist Mono, Instrument Serif (Latin subsets), SIL Open Font License 1.1, in `vendor/diagram-design/fonts/`.

@@ -13,7 +13,7 @@ description: >-
   code review, or non-explanatory HTML such as landing pages. For "fix this and explain
   why", fix first, then explain briefly.
 metadata:
-  version: "3.4"
+  version: "3.5"
 ---
 
 # Explain for Understanding
@@ -189,6 +189,9 @@ For HTML or executable exploration, read
 [html-rendering.md](references/html-rendering.md). It selects the bundled static-page
 renderer or a custom page built on the bundled component kit (`assets/kit`), and
 defines the visual style guide, source retention, and feedback handling.
+For a static page figure whose layout is the hard part (architecture, sequence, state,
+flow), read [diagrams.md](references/diagrams.md): it uses the vendored, offline
+diagram-design rules and checks, mapped to kit colors and inlined by `render.mjs page`.
 For an explicitly requested video, use an available video workflow and disclose if it
 is unavailable; do not silently substitute a static page and call it a video.
 

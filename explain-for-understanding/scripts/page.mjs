@@ -1,17 +1,22 @@
 // Route B builder: inline the bundled kit (and feedback component) into one self-contained HTML file.
-// Placeholders in the source page: <!-- kit:css -->  <!-- kit:js -->  <!-- kit:feedback -->
+// Placeholders in the source page: <!-- kit:css -->  <!-- kit:js -->  <!-- kit:feedback -->  <!-- kit:diagram-fonts -->
 import { existsSync, readFileSync, writeFileSync, mkdirSync, realpathSync } from 'node:fs';
 import { dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 const assets = fileURLToPath(new URL('../assets/', import.meta.url));
 const read = p => readFileSync(resolve(assets, p), 'utf8');
+const fontsDir = fileURLToPath(new URL('../vendor/diagram-design/fonts/', import.meta.url));
+// Vendored diagram-design fonts as base64 @font-face rules, so diagrams keep their type offline.
+const diagramFonts = () => readFileSync(resolve(fontsDir, 'fonts.css'), 'utf8')
+  .replace(/url\(([\w.-]+\.woff2)\)/g, (_, f) => `url(data:font/woff2;base64,${readFileSync(resolve(fontsDir, f)).toString('base64')})`);
 
 export function inlinePage(html) {
   const errors = [], warnings = [];
   const parts = {
     'kit:css': () => `<style data-kit="css">\n${read('kit/kit.css')}</style>`,
     'kit:js': () => `<script data-kit="js">\n${read('kit/kit.js').replace(/<\/script/gi, '<\\/script')}</script>`,
+    'kit:diagram-fonts': () => `<style data-kit="diagram-fonts">\n${diagramFonts()}</style>`,
     'kit:feedback': () => `<script data-kit="feedback">\n${read('feedback.js')}</script>`,
   };
   let out = html;
@@ -19,7 +24,7 @@ export function inlinePage(html) {
     const marker = `<!-- ${key} -->`;
     if (out.includes(marker)) out = out.split(marker).join(make());
   }
-  if (/<!--\s*kit:[a-z]+\s*-->/.test(out)) errors.push(`Unknown kit placeholder: ${out.match(/<!--\s*kit:[a-z]+\s*-->/)[0]}`);
+  if (/<!--\s*kit:[a-z-]+\s*-->/.test(out)) errors.push(`Unknown kit placeholder: ${out.match(/<!--\s*kit:[a-z-]+\s*-->/)[0]}`);
   if (!/data-kit="js"/.test(out) && /data-kit-/.test(out)) warnings.push('The page uses data-kit-* attributes but has no <!-- kit:js --> placeholder.');
   // Self-contained check: no external resources the browser would fetch.
   const external = [
