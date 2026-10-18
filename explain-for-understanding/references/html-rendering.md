@@ -138,7 +138,7 @@ Write an editable source page that uses kit classes and placeholders, then inlin
 node "$SKILL_DIR/scripts/render.mjs" page work/explanation.src.html outputs/explanation.html
 ```
 
-`page` replaces `<!-- kit:css -->`, `<!-- kit:js -->`, and `<!-- kit:feedback -->` with the
+`page` replaces `<!-- kit:css -->`, `<!-- kit:js -->`, and `<!-- kit:feedback -->` (and `<!-- kit:diagram-fonts -->`, see diagrams.md) with the
 contents of `assets/kit/kit.css`, `assets/kit/kit.js`, and `assets/feedback.js`. It fails
 on any external script, stylesheet, image, `@import`, `url(http…)`, or network call
 (`fetch`, `XMLHttpRequest`, `WebSocket`), and on unknown placeholders. Keep the source
@@ -201,6 +201,9 @@ large layout change. Highlighting is approximate (keywords, strings, numbers, co
 - **Diagrams.** Up to about seven nodes per figure; label edges with the action.
   Architecture with more nodes goes in a zoomable figure plus a table of the same
   relations so narrow screens do not depend on the figure.
+  For a laid-out static figure (type selection, 4px grid, geometry checks), follow
+  [diagrams.md](diagrams.md); add `<!-- kit:diagram-fonts -->` only if it uses the
+  vendored Latin diagram fonts.
 - **Motion.** Animate only state changes the reader triggers; no autoplay on load.
 
 ### Interactions

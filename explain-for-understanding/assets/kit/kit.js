@@ -1,4 +1,4 @@
-// efu kit v3.4 — vanilla JS, no network, no storage. Inline after kit.css in one HTML file.
+// efu kit v3.5 — vanilla JS, no network, no storage. Inline after kit.css in one HTML file.
 // Auto-initializes data-kit-* elements; window.Kit exposes highlight(), chart(), diff(), init().
 (() => {
   'use strict';

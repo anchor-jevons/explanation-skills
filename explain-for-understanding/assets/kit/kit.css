@@ -1,4 +1,4 @@
-/* efu kit v3.4 — inline into one HTML file; no network. Light/dark via prefers-color-scheme
+/* efu kit v3.5 — inline into one HTML file; no network. Light/dark via prefers-color-scheme
    or html[data-theme]. Components are opt-in by class or data-kit-* attribute. */
 :root{--bg:#fbfbfa;--fg:#1d1f23;--muted:#5d636e;--line:#d9dce1;--card:#fff;--soft:#f1f3f5;
 --accent:#2457c5;--accent-soft:#e6edfb;--ok:#1d7a46;--ok-soft:#e3f4ea;--warn:#a35a00;--warn-soft:#fdf0dc;
